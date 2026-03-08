@@ -11,7 +11,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.heat/0.2.0/leaflet-heat.js"></script>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/MarkerCluster.css"/>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/MarkerCluster.Default.css"/>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/leaflet.markercluster.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/leaflet.markercluster.js"></script> <script src="config.js"></script>
 <style>
 :root{--bg:#0a0e17;--panel:rgba(17,24,39,.94);--card:#1a2235;--input:#0d1425;--accent:#00e5a0;--accentDim:#00c88a;--glow:rgba(0,229,160,.15);--t1:#e8ecf4;--t2:#7a8ba7;--t3:#4a5568;--border:rgba(255,255,255,.06);--ba:rgba(0,229,160,.25);--red:#ff4757;--orange:#ffa502;--blue:#3b82f6;--purple:#8b5cf6;--yellow:#eab308;--cyan:#06b6d4;--pink:#ec4899}
 *{margin:0;padding:0;box-sizing:border-box}
@@ -498,7 +498,7 @@ const heatData=[
 // ══════════════════════════════════════════════
 const map=L.map('map',{center:[25.10,55.20],zoom:11,zoomControl:false,attributionControl:false});
 L.control.zoom({position:'topright'}).addTo(map);
-L.tileLayer('https://api.mapbox.com/styles/v1/mapbox/dark-v11/tiles/{z}/{x}/{y}?access_token=MAPBOX_TOKEN',{maxZoom:20,tileSize:512,zoomOffset:-1,attribution:'Mapbox'}).addTo(map);
+L.tileLayer('https://api.mapbox.com/styles/v1/mapbox/dark-v11/tiles/{z}/{x}/{y}?access_token='+window.MAPBOX_TOKEN,{maxZoom:20,tileSize:512,zoomOffset:-1,attribution:'Mapbox'}).addTo(map);
 
 const catColors={mega:'#8b5cf6',luxury:'#e0a526',mid:'#3b82f6',affordable:'#00e5a0',commercial:'#64748b',branded:'#f472b6'};
 const catSizes={mega:26,luxury:20,mid:18,affordable:16,commercial:18,branded:22};
@@ -1549,6 +1549,6 @@ sendMessage=async function(){
   }
 };
 </script>         
-<script src="mapbridge.js"></script>   ← ADD ONLY THIS LINE
+<script src="mapbridge.js"></script>
 </body>
 </html>
