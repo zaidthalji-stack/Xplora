@@ -1,0 +1,12 @@
+{
+  "builds": [
+    { "src": "api/messages.py", "use": "@vercel/python" },
+    { "src": "index.html", "use": "@vercel/static" },
+    { "src": "mapbridge.js", "use": "@vercel/static" }
+  ],
+  "routes": [
+    { "src": "/api/messages", "dest": "/api/messages.py" },
+    { "src": "/mapbridge.js", "dest": "/mapbridge.js" },
+    { "src": "/(.*)", "dest": "/index.html" }
+  ]
+}

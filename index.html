@@ -1,0 +1,1554 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Xplora</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.heat/0.2.0/leaflet-heat.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/MarkerCluster.css"/>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/MarkerCluster.Default.css"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/leaflet.markercluster.js"></script>
+<style>
+:root{--bg:#0a0e17;--panel:rgba(17,24,39,.94);--card:#1a2235;--input:#0d1425;--accent:#00e5a0;--accentDim:#00c88a;--glow:rgba(0,229,160,.15);--t1:#e8ecf4;--t2:#7a8ba7;--t3:#4a5568;--border:rgba(255,255,255,.06);--ba:rgba(0,229,160,.25);--red:#ff4757;--orange:#ffa502;--blue:#3b82f6;--purple:#8b5cf6;--yellow:#eab308;--cyan:#06b6d4;--pink:#ec4899}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--t1);overflow:hidden;height:100vh;width:100vw}
+#map{position:absolute;inset:0;z-index:1}
+
+/* TOP BAR */
+.topbar{position:absolute;top:0;left:0;right:0;z-index:1000;display:flex;align-items:center;justify-content:space-between;padding:10px 16px;padding-top:calc(10px + env(safe-area-inset-top,0px));background:rgba(10,14,23,.96);backdrop-filter:blur(12px)}
+.logo{display:flex;align-items:center;gap:8px}
+.logo-icon{width:30px;height:30px;background:var(--accent);border-radius:7px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;color:var(--bg);font-family:'Space Mono',monospace}
+.logo-text{font-size:16px;font-weight:700;letter-spacing:-.5px}
+.logo-text span{color:var(--accent)}
+.topbar-stats{display:flex;gap:20px;font-size:11px;font-family:'Space Mono',monospace}
+.stat-item{display:flex;flex-direction:column;align-items:flex-end;gap:1px}
+.stat-label{color:var(--t3);font-size:8px;text-transform:uppercase;letter-spacing:1px}
+.stat-value{color:var(--accent);font-weight:700;font-size:13px}
+
+/* CONTROLS */
+.controls{position:absolute;top:calc(56px + env(safe-area-inset-top,0px));left:12px;z-index:1000;display:flex;gap:4px;flex-wrap:wrap;max-width:720px}
+.pill{padding:5px 11px;background:var(--panel);border:1px solid var(--border);border-radius:16px;font-size:11px;font-weight:500;color:var(--t2);cursor:pointer;transition:all .2s;user-select:none;backdrop-filter:blur(8px);display:flex;align-items:center;gap:5px;white-space:nowrap}
+.pill:hover{border-color:var(--ba);color:var(--t1)}
+.pill.active{background:var(--glow);border-color:var(--accent);color:var(--accent)}
+.pill[title]{position:relative}
+.pill[title]:hover::after{content:attr(title);position:absolute;top:calc(100% + 6px);left:50%;transform:translateX(-50%);background:rgba(10,14,23,.95);border:1px solid rgba(0,229,160,.2);color:var(--t1);padding:6px 10px;border-radius:6px;font-size:9px;line-height:1.4;white-space:normal;width:220px;z-index:2000;pointer-events:none;backdrop-filter:blur(8px);box-shadow:0 4px 12px rgba(0,0,0,.4);animation:msgIn .2s ease}
+.pill[title]:hover::before{content:"";position:absolute;top:calc(100% + 1px);left:50%;transform:translateX(-50%);border:5px solid transparent;border-bottom-color:rgba(0,229,160,.2);z-index:2001}
+.pill .dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
+
+/* COUNTER */
+.counter{position:absolute;top:calc(84px + env(safe-area-inset-top,0px));left:16px;z-index:1000;font-size:10px;font-family:'Space Mono',monospace;color:var(--t3)}
+.counter b{color:var(--accent)}
+
+/* LEGEND */
+.legend{position:absolute;bottom:24px;left:12px;z-index:1000;background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:10px 14px;backdrop-filter:blur(12px);font-size:10px;max-width:240px}
+.legend h4{font-size:9px;text-transform:uppercase;letter-spacing:1.5px;color:var(--t3);margin-bottom:8px;font-family:'Space Mono',monospace}
+.legend-row{display:flex;align-items:center;gap:6px;margin-bottom:4px;color:var(--t2)}
+.legend-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.heat-gradient{width:60px;height:6px;border-radius:3px;background:linear-gradient(90deg,#1a1a2e,#16213e,#4a3aaa,#e94560,#ff6b6b);flex-shrink:0}
+
+/* CHAT */
+.chat-toggle{position:absolute;bottom:24px;right:16px;z-index:1001;width:48px;height:48px;border-radius:50%;background:var(--accent);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 20px rgba(0,229,160,.35);transition:all .3s}
+.chat-toggle:hover{transform:scale(1.08)}
+.chat-toggle svg{width:22px;height:22px;fill:var(--bg)}
+.chat-panel{position:absolute;bottom:84px;right:16px;z-index:1001;width:370px;max-height:500px;background:var(--panel);border:1px solid var(--ba);border-radius:14px;backdrop-filter:blur(20px);display:flex;flex-direction:column;overflow:hidden;transform:translateY(10px) scale(.96);opacity:0;pointer-events:none;transition:all .3s cubic-bezier(.16,1,.3,1)}
+.chat-panel.open{transform:translateY(0) scale(1);opacity:1;pointer-events:all}
+.chat-header{padding:12px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px}
+.chat-header-dot{width:7px;height:7px;border-radius:50%;background:var(--accent);animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.chat-header-text{font-size:12px;font-weight:600}
+.chat-header-text span{font-weight:400;color:var(--t3);font-size:10px;margin-left:4px}
+.chat-messages{flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:10px;min-height:180px;max-height:320px}
+.chat-messages::-webkit-scrollbar{width:3px}
+.chat-messages::-webkit-scrollbar-thumb{background:var(--t3);border-radius:3px}
+.msg{max-width:88%;padding:8px 12px;border-radius:12px;font-size:12px;line-height:1.5;animation:msgIn .3s ease}
+@keyframes msgIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+.msg.ai{background:var(--card);border:1px solid var(--border);color:var(--t1);align-self:flex-start;border-bottom-left-radius:3px}
+.msg.user{background:linear-gradient(135deg,rgba(0,229,160,.18),rgba(0,229,160,.06));border:1px solid var(--ba);color:var(--t1);align-self:flex-end;border-bottom-right-radius:3px}
+.msg .label{font-size:8px;text-transform:uppercase;letter-spacing:1px;color:var(--t3);margin-bottom:3px;font-family:'Space Mono',monospace}
+.msg.ai .label{color:var(--accentDim)}
+.chat-input-area{padding:10px 12px;border-top:1px solid var(--border);display:flex;gap:6px}
+.chat-input-area input{flex:1;background:var(--input);border:1px solid var(--border);border-radius:8px;padding:8px 12px;color:var(--t1);font-family:'DM Sans',sans-serif;font-size:12px;outline:none;transition:border-color .2s}
+.chat-input-area input::placeholder{color:var(--t3)}
+.chat-input-area input:focus{border-color:var(--accent)}
+.chat-send{width:34px;height:34px;border-radius:8px;background:var(--accent);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .2s;flex-shrink:0}
+.chat-send svg{width:14px;height:14px;fill:var(--bg)}
+.suggestions{display:flex;flex-wrap:wrap;gap:4px;margin-top:5px}
+.suggestion-chip{padding:4px 8px;background:rgba(0,229,160,.06);border:1px solid rgba(0,229,160,.12);border-radius:6px;font-size:10px;color:var(--accent);cursor:pointer;transition:all .2s}
+.suggestion-chip:hover{background:rgba(0,229,160,.14);border-color:var(--accent)}
+.typing-indicator{display:flex;gap:3px;padding:4px 0}
+.typing-indicator span{width:5px;height:5px;background:var(--t3);border-radius:50%;animation:typ 1.4s infinite}
+.typing-indicator span:nth-child(2){animation-delay:.2s}
+.typing-indicator span:nth-child(3){animation-delay:.4s}
+@keyframes typ{0%,60%,100%{transform:translateY(0);opacity:.4}30%{transform:translateY(-5px);opacity:1}}
+
+/* LEAFLET OVERRIDES */
+.leaflet-container{background:var(--bg)!important}
+.custom-marker{display:flex;align-items:center;justify-content:center;border-radius:50%;border:2px solid;transition:transform .15s;cursor:pointer}
+.custom-marker:hover{transform:scale(1.3)!important}
+.leaflet-popup-content-wrapper{background:var(--panel)!important;border:1px solid var(--ba)!important;border-radius:10px!important;box-shadow:0 6px 24px rgba(0,0,0,.5)!important}
+.leaflet-popup-content{color:var(--t1)!important;font-family:'DM Sans',sans-serif!important;margin:10px 14px!important;font-size:12px;line-height:1.4;min-width:220px;max-width:280px}
+.leaflet-popup-tip{background:var(--panel)!important}
+.leaflet-popup-close-button{color:var(--t3)!important;font-size:16px!important}
+.popup-title{font-weight:700;font-size:13px;margin-bottom:2px;color:var(--accent)}
+.popup-dev{font-size:10px;color:var(--t3);margin-bottom:6px}
+.popup-row{display:flex;justify-content:space-between;font-size:11px;padding:2px 0;border-bottom:1px solid var(--border)}
+.popup-row:last-child{border:none}
+.popup-row .k{color:var(--t3)}
+.popup-row .v{font-weight:600;font-family:'Space Mono',monospace;font-size:10px}
+.popup-tag{display:inline-block;padding:1px 6px;border-radius:3px;font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:.3px}
+.popup-img{width:100%;height:100px;object-fit:cover;border-radius:6px;margin-bottom:6px}
+.popup-listings{margin-top:6px;border-top:1px solid var(--border);padding-top:5px}
+.popup-listings h5{font-size:9px;text-transform:uppercase;letter-spacing:1px;color:var(--t3);margin-bottom:4px;font-family:'Space Mono',monospace}
+.listing-row{display:flex;justify-content:space-between;align-items:center;font-size:10px;padding:2px 0;border-bottom:1px solid rgba(255,255,255,.03)}
+.listing-row .lt{color:var(--t2)}
+.listing-row .lp{color:var(--accent);font-family:'Space Mono',monospace;font-size:9px;font-weight:700}
+.listing-row .ls{color:var(--t3);font-size:9px}
+.popup-link{display:inline-block;margin-top:5px;font-size:10px;color:var(--accent);text-decoration:none;opacity:.8;transition:opacity .2s}
+.popup-link:hover{opacity:1;text-decoration:underline}
+.tag-mega{background:rgba(139,92,246,.2);color:#a78bfa}
+.tag-luxury{background:rgba(224,165,38,.2);color:#e0a526}
+.tag-mid{background:rgba(59,130,246,.2);color:#60a5fa}
+.tag-affordable{background:rgba(0,229,160,.2);color:var(--accent)}
+.tag-commercial{background:rgba(100,116,139,.2);color:#94a3b8}
+.tag-branded{background:rgba(244,114,182,.2);color:#f472b6}
+
+/* SEARCH BAR */
+.search-bar{position:absolute;top:calc(56px + env(safe-area-inset-top,0px));right:16px;z-index:1000;display:flex;gap:4px}
+.search-bar input{width:200px;background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:6px 10px;color:var(--t1);font-family:'DM Sans',sans-serif;font-size:11px;outline:none;transition:all .2s;backdrop-filter:blur(8px)}
+.search-bar input:focus{border-color:var(--accent);width:260px}
+.search-bar input::placeholder{color:var(--t3)}
+
+/* INLINE COMPARISON CARD (inside popup) */
+.cmp-card{margin-top:6px;border:1px solid rgba(139,92,246,.15);border-radius:6px;overflow:hidden;background:rgba(139,92,246,.03)}
+.cmp-header{padding:5px 8px;background:rgba(139,92,246,.06);font-size:9px;color:var(--t3);font-family:'Space Mono',monospace;text-transform:uppercase;letter-spacing:.5px;display:flex;align-items:center;gap:4px}
+.cmp-header b{color:#a78bfa;text-transform:none;letter-spacing:0;font-size:10px}
+.cmp-grid{display:grid;grid-template-columns:1fr 1fr;font-size:10px;gap:0}
+.cmp-col{padding:5px 8px;border-right:1px solid rgba(255,255,255,.03)}
+.cmp-col:last-child{border-right:none}
+.cmp-col-name{font-weight:700;font-size:10px;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cmp-col-name.src{color:var(--accent)}
+.cmp-col-name.vs{color:#a78bfa}
+.cmp-row{display:flex;justify-content:space-between;padding:1px 0;font-size:9px}
+.cmp-row .k{color:var(--t3)}
+.cmp-row .v{font-family:'Space Mono',monospace;font-weight:600;font-size:9px}
+.cmp-row .v.green{color:var(--accent)}
+.cmp-row .v.purple{color:#a78bfa}
+.cmp-verdict{padding:5px 8px;font-size:9px;color:var(--t2);line-height:1.4;border-top:1px solid rgba(255,255,255,.03);background:rgba(0,229,160,.02)}
+.cmp-verdict b{color:var(--accent)}
+.intent-tag{display:inline-flex;padding:1px 5px;border-radius:3px;font-size:8px;font-weight:600;background:rgba(139,92,246,.08);border:1px solid rgba(139,92,246,.12);color:#a78bfa;margin:1px 1px}
+.yield-tag{display:inline-flex;padding:1px 5px;border-radius:3px;font-size:9px;font-weight:700;background:rgba(0,229,160,.08);border:1px solid rgba(0,229,160,.12);color:var(--accent);font-family:'Space Mono',monospace}
+.roi-tag{display:inline-flex;padding:1px 5px;border-radius:3px;font-size:9px;font-weight:700;background:rgba(234,179,8,.08);border:1px solid rgba(234,179,8,.12);color:var(--yellow);font-family:'Space Mono',monospace}
+.psf-tag{display:inline-flex;padding:1px 5px;border-radius:3px;font-size:9px;font-weight:700;background:rgba(59,130,246,.08);border:1px solid rgba(59,130,246,.12);color:#60a5fa;font-family:'Space Mono',monospace}
+.pp-tag{display:inline-flex;padding:1px 5px;border-radius:3px;font-size:9px;font-weight:600;background:rgba(6,182,212,.08);border:1px solid rgba(6,182,212,.12);color:var(--cyan);font-family:'Space Mono',monospace}
+
+/* CLUSTER OVERRIDES */
+.marker-cluster-small{background:rgba(0,229,160,.25)!important}
+.marker-cluster-small div{background:rgba(0,229,160,.6)!important;color:#fff!important;font-family:'Space Mono',monospace!important;font-size:11px!important;font-weight:700!important}
+.marker-cluster-medium{background:rgba(59,130,246,.25)!important}
+.marker-cluster-medium div{background:rgba(100,116,139,.6)!important;color:#fff!important;font-family:'Space Mono',monospace!important;font-size:11px!important;font-weight:700!important}
+.marker-cluster-large{background:rgba(139,92,246,.25)!important}
+.marker-cluster-large div{background:rgba(139,92,246,.6)!important;color:#fff!important;font-family:'Space Mono',monospace!important;font-size:12px!important;font-weight:700!important}
+
+@media(max-width:768px){
+  .topbar-stats{display:none}
+  .topbar{padding:8px 12px;padding-top:calc(8px + env(safe-area-inset-top,0px))}
+  .chat-panel{width:calc(100vw - 24px);right:12px;bottom:76px;max-height:60vh}
+  .chat-messages{max-height:45vh}
+  .controls{top:calc(48px + env(safe-area-inset-top,0px));left:8px;right:8px;max-width:none;gap:3px;flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding-bottom:4px}
+  .controls::-webkit-scrollbar{display:none}
+  .controls::after{content:"";position:sticky;right:0;top:0;bottom:0;width:24px;background:linear-gradient(90deg,transparent,rgba(10,14,23,.8));flex-shrink:0;pointer-events:none}
+  .pill{padding:4px 9px;font-size:10px;flex-shrink:0}
+  .pill[title]:hover::after{left:0;transform:none;width:200px;max-width:70vw}
+  .pill[title]:hover::before{left:20px;transform:none}
+  .counter{top:calc(76px + env(safe-area-inset-top,0px));left:12px;font-size:9px}
+  .search-bar{top:calc(48px + env(safe-area-inset-top,0px));right:8px;left:8px;display:none}
+  .search-bar.mobile-open{display:flex;position:absolute;top:calc(44px + env(safe-area-inset-top,0px));left:8px;right:8px;z-index:1001}
+  #searchToggle{display:block!important}
+  .search-bar input{width:100%!important;font-size:13px;padding:8px 12px}
+  .legend{bottom:calc(68px + env(safe-area-inset-bottom,0px));left:8px;max-width:180px;font-size:9px;padding:6px 10px}
+  
+  .legend h4{font-size:8px}
+  .chat-toggle{bottom:calc(16px + env(safe-area-inset-bottom,0px));right:12px;width:44px;height:44px}
+  .chat-toggle svg{width:20px;height:20px}
+  .leaflet-control-zoom{display:none!important}
+  .leaflet-popup-content{min-width:180px;max-width:240px;font-size:11px}
+  .popup-img{height:80px}
+}
+@media(max-width:480px){
+  .controls{top:calc(44px + env(safe-area-inset-top,0px))}
+  .pill{padding:3px 7px;font-size:9px}
+  .counter{top:calc(70px + env(safe-area-inset-top,0px))}
+}
+</style>
+</head>
+<body>
+<div id="map"></div>
+
+<div class="topbar">
+  <div class="logo">
+    <div class="logo-text" style="font-size:20px;font-weight:700;letter-spacing:-.5px">Xplora</div>
+  </div>
+  <div class="topbar-stats">
+    <div class="stat-item"><div class="stat-label">2025 Transactions</div><div class="stat-value">270K+</div></div>
+    <div class="stat-item"><div class="stat-label">Total Value</div><div class="stat-value">AED 917B</div></div>
+    <div class="stat-item"><div class="stat-label">Active Projects</div><div class="stat-value">726</div></div>
+    <div class="stat-item"><div class="stat-label">Listings</div><div class="stat-value" id="listingCount">0</div></div>
+  </div>
+</div>
+
+<div class="controls" id="catControls">
+  <div class="pill active" data-filter="all">All</div>
+  <div class="pill" data-filter="mega" title="AED 5B+ masterplans with 5,000+ units — Dubai Creek Harbour, Palm Jebel Ali, DAMAC Islands"><span class="dot" style="background:#8b5cf6"></span>Mega</div>
+  <div class="pill" data-filter="luxury" title="AED 3M+ entry · PSF 2,000+ · Prime locations — Palm, Downtown, Beachfront, Branded towers"><span class="dot" style="background:#e0a526"></span>Luxury</div>
+  <div class="pill" data-filter="mid" title="AED 700K–3M · PSF 1,000–2,000 · Growth communities — Dubai Hills, Business Bay, MBR City"><span class="dot" style="background:#3b82f6"></span>Mid-Market</div>
+  <div class="pill" data-filter="affordable" title="Under AED 1M entry · PSF 600–1,400 · High yield 8–10% — JVC, Arjan, Sports City, Al Furjan"><span class="dot" style="background:#00e5a0"></span>Affordable</div>
+  <div class="pill" data-filter="commercial" title="Office, mixed-use & high-transaction zones — Business Bay, DIFC, JLT, Dubai Airport City"><span class="dot" style="background:#64748b"></span>Commercial</div>
+  <div class="pill" data-filter="branded" title="Developer × luxury brand collabs — Bugatti, Mercedes, Cavalli, Armani, Versace, Six Senses"><span class="dot" style="background:#f472b6;box-shadow:0 0 6px rgba(244,114,182,.5)"></span>Branded</div>
+  <div class="pill" data-filter="heatmap"><span class="dot" style="background:linear-gradient(90deg,#e94560,#ff6b6b)"></span>Heatmap</div>
+</div>
+
+<div class="counter" id="counter"></div>
+
+<div class="search-bar" id="searchBar">
+  <input type="text" id="searchInput" placeholder="Search projects, areas, developers..." oninput="filterSearch(this.value)">
+</div>
+<button onclick="document.getElementById('searchBar').classList.toggle('mobile-open')" style="position:absolute;top:calc(8px + env(safe-area-inset-top,0px));right:60px;z-index:1000;display:none;background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:6px 8px;cursor:pointer" id="searchToggle">
+  <svg viewBox="0 0 24 24" style="width:16px;height:16px;fill:var(--t2)"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+</button>
+
+<div class="legend" id="legend">
+  <h4 onclick="document.getElementById('legend').classList.toggle('open')" style="cursor:pointer;display:flex;align-items:center;justify-content:space-between">Legend <span id="legendToggle" style="font-size:12px;transition:transform .2s">▸</span></h4>
+  <div id="legendBody" style="display:none">
+  <div class="legend-row"><div class="legend-dot" style="background:#8b5cf6"></div>Mega Projects</div>
+  <div class="legend-row"><div class="legend-dot" style="background:#e0a526"></div>Luxury (AED 3M+)</div>
+  <div class="legend-row"><div class="legend-dot" style="background:#3b82f6"></div>Mid-Market</div>
+  <div class="legend-row"><div class="legend-dot" style="background:#00e5a0"></div>Affordable</div>
+  <div class="legend-row"><div class="legend-dot" style="background:#64748b"></div>Commercial</div>
+  <div class="legend-row"><div class="legend-dot" style="background:#f472b6;box-shadow:0 0 4px rgba(244,114,182,.5)"></div>Branded Residences</div>
+  <div class="legend-row"><div class="heat-gradient"></div>Transaction Heat</div>
+  </div>
+</div>
+
+<button class="chat-toggle" onclick="toggleChat()" title="AI Assistant">
+  <svg viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H6l-2 2V4h16v12z"/><path d="M7 9h2v2H7zm4 0h2v2h-2zm4 0h2v2h-2z"/></svg>
+</button>
+
+<div class="chat-panel" id="chatPanel">
+  <div class="chat-header">
+    <div class="chat-header-dot"></div>
+    <div class="chat-header-text">Xplora</div>
+  </div>
+  <div class="chat-messages" id="chatMessages">
+    <div class="msg ai"><div class="label">AI</div>Hey! I know every project on this map — ask me anything about pricing, yields, areas, or which projects to compare. What are you looking for?
+      <div class="suggestions">
+        <div class="suggestion-chip" onclick="askSuggestion(this)">Compare Samana Waves vs Binghatti Aurora</div>
+        <div class="suggestion-chip" onclick="askSuggestion(this)">Best for rental income under AED 1M?</div>
+        <div class="suggestion-chip" onclick="askSuggestion(this)">Which branded residences have best ROI?</div>
+        <div class="suggestion-chip" onclick="askSuggestion(this)">Family home in a growing area?</div>
+      </div>
+    </div>
+  </div>
+  <div class="chat-input-area">
+    <label for="fpUpload" style="width:34px;height:34px;border-radius:8px;background:rgba(59,130,246,.1);border:1px solid rgba(59,130,246,.2);cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .2s" title="Upload floor plan for analysis">
+      <svg viewBox="0 0 24 24" style="width:16px;height:16px;fill:#60a5fa"><path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg>
+    </label>
+    <input type="file" id="fpUpload" accept="image/*,.pdf" style="display:none" onchange="handleFloorPlanUpload(event)">
+    <input type="text" id="chatInput" placeholder="Ask anything, or upload a floor plan..." onkeydown="if(event.key==='Enter')sendMessage()">
+    <button class="chat-send" onclick="sendMessage()"><svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg></button>
+  </div>
+</div>
+
+<!-- Compare Panel - removed, now inline in popup -->
+
+<script>
+// ══════════════════════════════════════════════
+// 100+ DUBAI PROPERTIES DATABASE
+// Sources: Bayut, PropertyFinder, DXBInteract, DLD, fäm, developer sites
+// ══════════════════════════════════════════════
+const P = [
+// ─── MEGA PROJECTS ───
+{n:"Dubai Creek Harbour",d:"Emaar",lat:25.2048,lng:55.3440,c:"mega",s:"Under Construction",u:"~43,000 units",p:"AED 1.2M–15M+",e:"2026-2030",t:"Flagship",desc:"Creek Tower revived Jan 2026. Dubai Square indoor city under construction."},
+{n:"Palm Jebel Ali",d:"Nakheel",lat:25.0024,lng:55.0100,c:"mega",s:"Under Construction",u:"8,000+ villas",p:"AED 5M–80M+",e:"2026-2028",t:"Relaunched",desc:"Mega-island relaunched. Early villa handovers 2026-2027."},
+{n:"Emaar The Oasis",d:"Emaar",lat:25.0800,lng:55.2750,c:"mega",s:"Under Construction",u:"~7,000 villas",p:"AED 8M–150M+",e:"2026-2032",t:"AED 73B",desc:"100M sqft ultra-luxury villa city. Marèva & Palmiera phases."},
+{n:"Dubai South / Al Maktoum Airport",d:"Dubai South",lat:24.8900,lng:55.1600,c:"mega",s:"Under Construction",u:"1M residents",p:"AED 450K–3M",e:"2027-2035",t:"Aviation Hub",desc:"World's largest airport (260M pax). 145 sqkm district."},
+{n:"Expo City Dubai",d:"Expo City Authority",lat:24.9700,lng:55.1500,c:"mega",s:"Active",u:"35K residents",p:"AED 800K–5M",e:"2025-2030",t:"Sustainability",desc:"Legacy city. Expo Valley Views sustainable communities."},
+{n:"DAMAC Islands",d:"DAMAC",lat:25.0500,lng:55.0700,c:"mega",s:"Under Construction",u:"~15,000",p:"AED 2M–25M",e:"2027-2030",t:"Island Living",desc:"Off-coast luxury island. Bali, Seychelles, Maldives clusters."},
+{n:"MBR City / Meydan",d:"Meydan Group",lat:25.1580,lng:55.3050,c:"mega",s:"Multi-Phase",u:"50,000+",p:"AED 1.5M–40M+",e:"2024-2032",t:"MBR Gardens",desc:"District One, Meydan One. AED 14.5B transactions 2025."},
+{n:"Mercedes-Benz Places – Binghatti City",d:"Binghatti",lat:25.1600,lng:55.3080,c:"mega",s:"Launching 2026",u:"Multi-tower",p:"AED 2M–30M+",e:"2028-2032",t:"AED 30B",desc:"10M sqft masterplan in Meydan. Self-sustained urban ecosystem."},
+{n:"Dubai Mansions (Emaar Hills)",d:"Emaar",lat:25.1320,lng:55.2200,c:"mega",s:"Announced",u:"40,000 homes",p:"AED 10M–100M+",e:"2027+",t:"Ultra Luxury",desc:"10,000-20,000 sqft ultra-luxury estates."},
+
+// ─── EMAAR PROJECTS ───
+{n:"Downtown Dubai / Burj Khalifa",d:"Emaar",lat:25.1972,lng:55.2744,c:"luxury",s:"Active",u:"Various",p:"AED 1.2M–30M+",e:"Established",t:"Prime Central",desc:"Burj Khalifa district. Top 5 by transaction value."},
+{n:"Emaar Beachfront",d:"Emaar",lat:25.0810,lng:55.1285,c:"luxury",s:"Under Construction",u:"Multiple towers",p:"AED 1.3M–15M+",e:"2026-2028",t:"Beachfront",desc:"Gated island. Bayview by Address handover ~2026."},
+{n:"Dubai Hills Estate",d:"Emaar × Meraas",lat:25.1289,lng:55.2280,c:"mid",s:"Multi-Phase",u:"~25,000",p:"AED 1M–20M+",e:"2024-2028",t:"Family Living",desc:"Green community with Dubai Hills Mall."},
+{n:"The Valley",d:"Emaar",lat:25.0290,lng:55.3900,c:"mid",s:"Under Construction",u:"~10,000",p:"AED 1.3M–4M",e:"2026-2027",t:"Suburban",desc:"Family townhouse community. EDEN launch."},
+{n:"Emaar South",d:"Emaar",lat:24.9300,lng:55.1700,c:"mid",s:"Under Construction",u:"~15,000",p:"AED 700K–3M",e:"2026-2028",t:"Golf Living",desc:"Adjacent to Expo City. Golf course community."},
+{n:"Dubai Creek Harbour – Silva",d:"Emaar",lat:25.2060,lng:55.3460,c:"mid",s:"Under Construction",u:"Tower",p:"AED 1.4M–5M",e:"2027",t:"Creek Views",desc:"Latest tower launch at Creek Harbour."},
+{n:"Emaar Vida Residences Hillside",d:"Emaar",lat:25.1310,lng:55.2260,c:"luxury",s:"Under Construction",u:"Branded Tower",p:"AED 1.8M–8M",e:"2027",t:"Branded",desc:"Vida-branded in Dubai Hills Estate."},
+{n:"Grand Polo Club & Resort",d:"Emaar",lat:25.0650,lng:55.3300,c:"luxury",s:"Under Construction",u:"Montura + Selvara",p:"AED 3M–25M+",e:"2027-2028",t:"Polo Living",desc:"Equestrian lifestyle community."},
+
+// ─── DAMAC PROJECTS ───
+{n:"DAMAC Hills",d:"DAMAC",lat:25.0400,lng:55.2400,c:"mid",s:"Active",u:"Trump Golf Club",p:"AED 1.2M–18M+",e:"Established",t:"Golf Community",desc:"Master community around Trump International Golf Club."},
+{n:"DAMAC Hills 2",d:"DAMAC",lat:25.0100,lng:55.2800,c:"affordable",s:"Active",u:"~20,000",p:"AED 400K–3M",e:"Established",t:"Nature Living",desc:"Affordable villas & townhouses. Nature theme."},
+{n:"DAMAC Lagoons",d:"DAMAC",lat:25.0350,lng:55.2250,c:"mid",s:"Under Construction",u:"~20,000",p:"AED 1.2M–8M",e:"2026-2028",t:"Mediterranean",desc:"Morocco, Ibiza, Portofino clusters. Q4 2026 handover."},
+{n:"DAMAC Safa One",d:"DAMAC × de Grisogono",lat:25.1850,lng:55.2530,c:"luxury",s:"Under Construction",u:"Tower",p:"AED 1.62M–15M+",e:"Q1 2026",t:"Branded",desc:"Edge of Safa Park. Gemstone-inspired aesthetics."},
+{n:"DAMAC Safa Two",d:"DAMAC",lat:25.1840,lng:55.2520,c:"luxury",s:"Under Construction",u:"Tower",p:"AED 2M–20M+",e:"2027",t:"Canal Views",desc:"Dubai Canal & Burj Al Arab views."},
+{n:"Cavalli Couture",d:"DAMAC × Cavalli",lat:25.1900,lng:55.2660,c:"luxury",s:"Under Construction",u:"Ultra-luxury",p:"AED 16.5M+",e:"Q4 2025",t:"Ultra Luxury",desc:"Dubai Water Canal. Private terraces & infinity pools."},
+{n:"DAMAC Utopia",d:"DAMAC",lat:25.0450,lng:55.2420,c:"luxury",s:"Under Construction",u:"Mansions",p:"AED 18.1M+",e:"Q4 2027",t:"Golf Mansions",desc:"Resort-style mansions in DAMAC Hills golf enclave."},
+{n:"Chelsea Residences",d:"DAMAC × Chelsea FC",lat:25.2340,lng:55.2760,c:"mid",s:"Under Construction",u:"6 towers",p:"AED 1M–5M",e:"2027",t:"Branded",desc:"Maritime City. Chelsea FC branded."},
+{n:"DAMAC Chic Tower",d:"DAMAC",lat:25.1870,lng:55.2660,c:"mid",s:"Under Construction",u:"Tower",p:"AED 823K–3M",e:"Q2 2026",t:"Canal Side",desc:"Business Bay canal views."},
+{n:"DAMAC Bay by Cavalli",d:"DAMAC",lat:25.0810,lng:55.1360,c:"luxury",s:"Under Construction",u:"Seafront",p:"AED 2.9M+",e:"Q3 2027",t:"Couture",desc:"Couture-inspired seafront homes."},
+{n:"DAMAC Canal Heights",d:"DAMAC × de Grisogono",lat:25.1860,lng:55.2640,c:"mid",s:"Under Construction",u:"Tower",p:"AED 1.25M–6M",e:"Q4 2027",t:"Lagoon Views",desc:"Lagoon views & wellness features."},
+{n:"DAMAC Riverside",d:"DAMAC",lat:25.0020,lng:55.1720,c:"affordable",s:"Under Construction",u:"Townhouses",p:"AED 2.4M–3.5M",e:"2028",t:"DIP",desc:"4-5 BR townhouses in Dubai Investment Park."},
+{n:"DAMAC Harbour Lights",d:"DAMAC",lat:25.2330,lng:55.2750,c:"mid",s:"Under Construction",u:"High-rise",p:"AED 1.54M+",e:"Q2 2027",t:"Waterfront",desc:"Dubai Maritime City harbourfront."},
+
+// ─── BINGHATTI PROJECTS ───
+{n:"Burj Binghatti Jacob & Co",d:"Binghatti",lat:25.1830,lng:55.2640,c:"luxury",s:"Under Construction",u:"100+ floors",p:"AED 8.2M–40M+",e:"Q2 2026",t:"Tallest Resi",desc:"World's tallest residential tower. Diamond-inspired."},
+{n:"Bugatti Residences",d:"Binghatti",lat:25.1880,lng:55.2620,c:"luxury",s:"Under Construction",u:"Branded",p:"AED 19.1M–550M",e:"Q4 2025",t:"Record Sale",desc:"Record AED 550M apartment sale."},
+{n:"Mercedes-Benz Places",d:"Binghatti",lat:25.1985,lng:55.2730,c:"luxury",s:"Under Construction",u:"65-storey",p:"AED 8.8M+",e:"Q4 2026",t:"Auto Brand",desc:"Downtown Dubai. Smart-living tower."},
+{n:"One by Binghatti",d:"Binghatti",lat:25.1860,lng:55.2670,c:"mid",s:"Under Construction",u:"Tower",p:"AED 1.7M+",e:"Q4 2026",t:"Canal Views",desc:"Waterfront tower. Dubai Canal views."},
+{n:"Binghatti Skyrise",d:"Binghatti",lat:25.1840,lng:55.2650,c:"mid",s:"Under Construction",u:"3,333 units",p:"AED 700K–3M",e:"Dec 2026",t:"Business Bay",desc:"Central Business Bay. City convenience."},
+{n:"Binghatti Aurora",d:"Binghatti",lat:25.0640,lng:55.2070,c:"affordable",s:"Under Construction",u:"Tower",p:"AED 667K+",e:"Q4 2025",t:"JVC D12",desc:"JVC District 12. Sustainable design."},
+{n:"Binghatti Phoenix",d:"Binghatti",lat:25.0660,lng:55.2100,c:"affordable",s:"Under Construction",u:"Tower",p:"AED 600K+",e:"Q3 2025",t:"JVC",desc:"Modern amenities. Geometric design."},
+{n:"Binghatti Ruby",d:"Binghatti",lat:25.0620,lng:55.2060,c:"affordable",s:"Under Construction",u:"Tower",p:"AED 695K+",e:"Q1 2026",t:"JVC D16",desc:"JVC District 16. Studios to 3BR."},
+{n:"Binghatti Hills",d:"Binghatti",lat:25.0490,lng:55.2420,c:"affordable",s:"Under Construction",u:"Tower",p:"AED 778K+",e:"Q2 2026",t:"Science Park",desc:"Dubai Science Park. Striking high-rise."},
+{n:"Binghatti Hillside",d:"Binghatti",lat:25.0500,lng:55.2430,c:"affordable",s:"Under Construction",u:"21 storeys",p:"AED 777K+",e:"Q2 2026",t:"Wellness",desc:"Wellness-focused. Mid-rise community."},
+{n:"Binghatti Elite",d:"Binghatti",lat:25.0410,lng:55.1850,c:"affordable",s:"Under Construction",u:"Tower",p:"AED 600K+",e:"Q2 2026",t:"Production City",desc:"Dubai Production City. Affordable entry."},
+{n:"Binghatti Haven",d:"Binghatti",lat:25.0530,lng:55.2200,c:"affordable",s:"Under Construction",u:"Tower",p:"AED 650K+",e:"2026",t:"Sports City",desc:"57% avg ROI in Sports City."},
+{n:"Binghatti Creek",d:"Binghatti",lat:25.2000,lng:55.3300,c:"mid",s:"Under Construction",u:"Tower",p:"AED 1.2M+",e:"2026",t:"Creek Views",desc:"Overlooks Dubai Water Canal."},
+{n:"Binghatti Palm 01",d:"Binghatti",lat:25.1140,lng:55.1420,c:"luxury",s:"Concept Stage",u:"Ultra-luxury",p:"AED 5M+",e:"TBA",t:"Palm East",desc:"Palm Jumeirah East Crescent. 360° views."},
+{n:"Binghatti Apex",d:"Binghatti",lat:25.0650,lng:55.2090,c:"affordable",s:"Under Construction",u:"Tower",p:"AED 650K+",e:"Q2 2026",t:"JVC",desc:"Studios & 1BR in JVC."},
+
+// ─── SOBHA REALTY ───
+{n:"Sobha Hartland",d:"Sobha Realty",lat:25.1700,lng:55.3200,c:"luxury",s:"Multi-Phase",u:"Villas & Towers",p:"AED 1.8M–25M",e:"2025-2027",t:"Green Luxury",desc:"Gated green community. Riverside Crescent."},
+{n:"Sobha Hartland II",d:"Sobha Realty",lat:25.1720,lng:55.3220,c:"luxury",s:"Under Construction",u:"Estates",p:"AED 2M–15M",e:"2027",t:"Waterfront",desc:"Waterfront estates extension."},
+{n:"Sobha One",d:"Sobha Realty",lat:25.1740,lng:55.2850,c:"luxury",s:"Under Construction",u:"Premium Tower",p:"AED 2.5M–20M+",e:"2027",t:"Ras Al Khor",desc:"Landmark tower with nature views."},
+{n:"Sobha Elwood",d:"Sobha Realty",lat:25.0600,lng:55.3200,c:"luxury",s:"Under Construction",u:"Villas",p:"AED 7.93M–11.5M",e:"Dec 2027",t:"Nature Villas",desc:"4-6BR villas on Al Ain Road. Resort amenities."},
+{n:"Sobha Central",d:"Sobha Realty",lat:25.1750,lng:55.2900,c:"mid",s:"Under Construction",u:"Mixed-Use",p:"AED 1.5M–8M",e:"2027",t:"Urban Hub",desc:"The Horizon tower. Premium apartments."},
+{n:"Sobha Solis",d:"Sobha Realty",lat:25.0450,lng:55.2300,c:"mid",s:"Under Construction",u:"Apartments",p:"AED 900K–3M",e:"2027",t:"Motor City",desc:"Modern living in Dubai Motor City."},
+{n:"Sobha Sanctuary",d:"Sobha Realty",lat:25.0550,lng:55.3100,c:"mega",s:"Announced",u:"AED 50B program",p:"AED 5M–100M+",e:"2028+",t:"AED 50B",desc:"Largest Sobha development ever announced."},
+
+// ─── AZIZI DEVELOPMENTS ───
+{n:"Azizi Riviera",d:"Azizi",lat:25.1560,lng:55.3020,c:"mid",s:"Active",u:"69 buildings",p:"AED 600K–3M",e:"Handed Over",t:"MBR Flagship",desc:"Crystal lagoon, retail district. French Riviera inspired."},
+{n:"Burj Azizi",d:"Azizi",lat:25.2200,lng:55.2800,c:"luxury",s:"Under Construction",u:"725m tower",p:"AED 7.5M+",e:"Q3 2030",t:"2nd Tallest",desc:"World's 2nd tallest tower on Sheikh Zayed Rd."},
+{n:"Azizi Mina",d:"Azizi",lat:25.1120,lng:55.1400,c:"luxury",s:"Completed",u:"178 units",p:"AED 2.2M+",e:"Completed",t:"Palm East",desc:"Palm Jumeirah east crescent. Beachfront."},
+{n:"Azizi Venice",d:"Azizi",lat:24.9200,lng:55.1650,c:"affordable",s:"Under Construction",u:"Multi-phase",p:"AED 480K–2M",e:"2027",t:"Dubai South",desc:"Lagoon-facing. Airport/Expo axis."},
+{n:"Azizi Creek Views",d:"Azizi",lat:25.2350,lng:55.3150,c:"mid",s:"Under Construction",u:"Towers",p:"AED 1.38M+",e:"Q3 2025",t:"Healthcare City",desc:"Al Jaddaf. Creek panoramic views."},
+{n:"Azizi Beach Oasis",d:"Azizi",lat:25.0450,lng:55.2000,c:"affordable",s:"Under Construction",u:"Community",p:"AED 457K–1.5M",e:"2025-2026",t:"Studio City",desc:"Resort-style lagoon pools."},
+{n:"Azizi Riviera Reve",d:"Azizi",lat:25.1550,lng:55.3010,c:"mid",s:"Under Construction",u:"Luxury Edition",p:"AED 800K+",e:"Q4 2025",t:"MBR Premium",desc:"Premium Riviera edition in Meydan."},
+{n:"Azizi Riviera Beachfront",d:"Azizi",lat:25.1540,lng:55.3000,c:"mid",s:"Under Construction",u:"3 Towers",p:"AED 720K+",e:"Q4 2025",t:"Canal Front",desc:"Crystal lagoon beachfront towers."},
+{n:"Azizi Central",d:"Azizi",lat:25.0380,lng:55.1550,c:"affordable",s:"Under Construction",u:"Mid-luxury",p:"AED 1.27M+",e:"Q4 2025",t:"Al Furjan",desc:"Al Furjan. Sheikh Zayed Rd access."},
+{n:"Azizi Star",d:"Azizi",lat:25.0360,lng:55.1530,c:"affordable",s:"Active",u:"12 storeys",p:"AED 500K+",e:"Ready",t:"Al Furjan",desc:"Studios & apartments. Panoramic views."},
+{n:"Azizi Milan",d:"Azizi",lat:25.0850,lng:55.3050,c:"affordable",s:"Under Construction",u:"Multi-building",p:"AED 550K+",e:"2027",t:"City of Arabia",desc:"Dubailand. Future metro growth."},
+{n:"Azizi Wasel",d:"Azizi",lat:25.2900,lng:55.3500,c:"mid",s:"Under Construction",u:"Coastal Tower",p:"AED 1M+",e:"2027",t:"Dubai Islands",desc:"Upscale coastal tower."},
+
+// ─── SAMANA DEVELOPERS ───
+{n:"Samana Waves",d:"Samana",lat:25.0655,lng:55.2080,c:"affordable",s:"Under Construction",u:"Tower",p:"AED 650K+",e:"2026",t:"JVC",desc:"Private pools. Vertical forest concept."},
+{n:"Samana Manhattan",d:"Samana",lat:25.0645,lng:55.2075,c:"affordable",s:"Under Construction",u:"Tower",p:"AED 700K+",e:"2026",t:"JVC",desc:"NYC-inspired in JVC."},
+{n:"Samana Greens",d:"Samana",lat:25.0540,lng:55.2360,c:"affordable",s:"Completed",u:"Apartments",p:"AED 430K+",e:"Delivered",t:"Arjan",desc:"First Samana project. Sports facilities."},
+{n:"Samana Portofino",d:"Samana",lat:25.0400,lng:55.1830,c:"affordable",s:"Under Construction",u:"Tower",p:"AED 669K+",e:"Q1 2026",t:"IMPZ",desc:"Riviera-style. Pastel exteriors."},
+{n:"Samana Skyros",d:"Samana",lat:25.0525,lng:55.2340,c:"affordable",s:"Under Construction",u:"Tower",p:"AED 649K+",e:"Q2 2026",t:"Arjan",desc:"Rooftop lagoon pools. Wellness decks."},
+{n:"Samana IVY Gardens",d:"Samana",lat:25.0440,lng:55.2480,c:"affordable",s:"Under Construction",u:"Apartments",p:"AED 522K+",e:"Q2 2026",t:"DLRC",desc:"Nature-inspired in Dubai Land Residence."},
+{n:"Samana California",d:"Samana",lat:25.0450,lng:55.1500,c:"affordable",s:"Under Construction",u:"Tower",p:"AED 749K+",e:"Q4 2026",t:"Discovery Gdns",desc:"Discovery Gardens. Affordable luxury."},
+{n:"Samana Ocean Pearl",d:"Samana",lat:25.2930,lng:55.3540,c:"mid",s:"Under Construction",u:"2 Towers",p:"AED 1.6M–4.3M",e:"2026-2028",t:"Dubai Islands",desc:"Coastal-inspired. Upscale waterfront."},
+{n:"Samana Rome",d:"Samana",lat:25.1570,lng:55.3060,c:"mid",s:"Under Construction",u:"Luxury Apts",p:"AED 1.88M+",e:"Q4 2027",t:"MBR D11",desc:"MBR City District 11."},
+{n:"Samana Barari Views",d:"Samana",lat:25.0700,lng:55.2700,c:"affordable",s:"Under Construction",u:"Towers",p:"AED 684K+",e:"2027",t:"Majan",desc:"Dubailand Majan. Long-term growth."},
+{n:"Samana Ibiza",d:"Samana",lat:25.0435,lng:55.2475,c:"affordable",s:"Under Construction",u:"Tower",p:"AED 699K+",e:"Q1 2028",t:"DLRC",desc:"Mediterranean-flair resort style."},
+{n:"Samana Mykonos",d:"Samana",lat:25.0460,lng:55.1990,c:"mid",s:"Under Construction",u:"Tower",p:"AED 999K+",e:"2027",t:"Studio City",desc:"Upscale Greek-island inspired."},
+{n:"Samana Boulevard Heights",d:"Samana",lat:25.0680,lng:55.2650,c:"affordable",s:"Under Construction",u:"Community",p:"AED 700K+",e:"Q2 2028",t:"Dubailand",desc:"Wide boulevards, greens, urban sanctuary."},
+
+// ─── ELLINGTON PROPERTIES ───
+{n:"Ocean House",d:"Ellington",lat:25.1130,lng:55.1380,c:"luxury",s:"Under Construction",u:"Branded",p:"AED 8.37M+",e:"Q2 2026",t:"Palm Jumeirah",desc:"Beachfront branded apartments & penthouses."},
+{n:"Ellington House 3",d:"Ellington",lat:25.1280,lng:55.2270,c:"mid",s:"Under Construction",u:"Tower",p:"AED 1.9M+",e:"Q3 2025",t:"Dubai Hills",desc:"Golf-facing in Dubai Hills Estate."},
+{n:"The Crestmark",d:"Ellington",lat:25.1855,lng:55.2655,c:"mid",s:"Under Construction",u:"High-rise",p:"AED 1.5M+",e:"Q1 2026",t:"Business Bay",desc:"Canal-side sophisticated tower."},
+{n:"Art Bay East & West",d:"Ellington",lat:25.2250,lng:55.3200,c:"mid",s:"Under Construction",u:"Mid-rise",p:"AED 1.05M–2M",e:"Q3 2026",t:"Al Jaddaf",desc:"Jaddaf Waterfront. Art-inspired design."},
+{n:"Lakeshore Villas",d:"Ellington",lat:25.1560,lng:55.3070,c:"luxury",s:"Under Construction",u:"Villas",p:"AED 12.9M+",e:"Q4 2026",t:"MBR Sanctuary",desc:"The Sanctuary at MBR City."},
+{n:"Waterside Villas",d:"Ellington",lat:25.1570,lng:55.3040,c:"luxury",s:"Under Construction",u:"Ultra-luxury",p:"AED 17M+",e:"Q4 2025",t:"MBR D11",desc:"District 11 MBR City."},
+{n:"Upper House",d:"Ellington",lat:25.0720,lng:55.1500,c:"mid",s:"Under Construction",u:"Twin Towers",p:"AED 750K+",e:"Q1 2026",t:"JLT Views",desc:"Overlooking Jumeirah Lake Towers."},
+{n:"The Portman",d:"Ellington",lat:25.0635,lng:55.2085,c:"affordable",s:"Under Construction",u:"Apartments",p:"AED 420K+",e:"Q3 2025",t:"JVC",desc:"Stylish design-led in JVC."},
+{n:"Highgrove",d:"Ellington",lat:25.1650,lng:55.3350,c:"luxury",s:"Under Construction",u:"Villas/Apts",p:"AED 1.7M+",e:"Q4 2027",t:"Bukadra",desc:"Premium villas, apartments, penthouses."},
+{n:"Arbor View",d:"Ellington",lat:25.0535,lng:55.2345,c:"affordable",s:"Under Construction",u:"Apartments",p:"AED 800K+",e:"Q1 2026",t:"Arjan",desc:"Green-inspired. Lifestyle amenities."},
+{n:"Cove (Dubai Islands)",d:"Ellington",lat:25.2940,lng:55.3550,c:"mid",s:"Under Construction",u:"Tower",p:"AED 1.5M+",e:"2028",t:"Dubai Islands",desc:"Hotels, beach club, yacht club access."},
+
+// ─── DANUBE PROPERTIES ───
+{n:"Danube Oceanz",d:"Danube",lat:25.2320,lng:55.2740,c:"mid",s:"Under Construction",u:"3 Towers",p:"AED 1.1M+",e:"Q1 2027",t:"Maritime City",desc:"Sea-facing waterfront residences."},
+{n:"Danube Bayz 102",d:"Danube",lat:25.1865,lng:55.2650,c:"mid",s:"Under Construction",u:"Tower",p:"AED 1.27M+",e:"Q4 2029",t:"Business Bay",desc:"Modern high-rise. Canal views."},
+{n:"Danube Diamondz",d:"Danube",lat:25.0710,lng:55.1490,c:"mid",s:"Under Construction",u:"Tower",p:"AED 1M+",e:"2027",t:"JLT",desc:"Premium JLT tower."},
+{n:"Danube Viewz (Aston Martin)",d:"Danube × Aston Martin",lat:25.0705,lng:55.1485,c:"luxury",s:"Under Construction",u:"Branded",p:"AED 950K+",e:"Q2 2026",t:"JLT Branded",desc:"Partnership with Aston Martin."},
+{n:"Danube Fashionz",d:"Danube × FashionTV",lat:25.0610,lng:55.2095,c:"affordable",s:"Under Construction",u:"Tower",p:"AED 650K+",e:"Q3 2026",t:"JVT",desc:"Fashion-inspired. FashionTV collab."},
+{n:"Danube Elitz 3",d:"Danube",lat:25.0670,lng:55.2110,c:"affordable",s:"Under Construction",u:"Tower",p:"AED 650K+",e:"Q4 2026",t:"JVC D13",desc:"Contemporary in JVC District 13."},
+{n:"Danube Petalz",d:"Danube",lat:25.3200,lng:55.3900,c:"affordable",s:"Near Completion",u:"Tower",p:"AED 450K+",e:"Q3 2025",t:"Intl City",desc:"International City. Most affordable."},
+{n:"Danube Skyz",d:"Danube",lat:25.0520,lng:55.2355,c:"affordable",s:"Active",u:"Tower",p:"AED 399K+",e:"Ready",t:"Arjan",desc:"Arjan. Budget-friendly entry."},
+{n:"Danube Aspirz",d:"Danube",lat:25.0510,lng:55.2220,c:"affordable",s:"Under Construction",u:"Tower",p:"AED 850K+",e:"Q4 2028",t:"Sports City",desc:"Dubai Sports City living."},
+
+// ─── NAKHEEL PROJECTS ───
+{n:"Palm Jumeirah",d:"Nakheel",lat:25.1124,lng:55.1390,c:"luxury",s:"Active",u:"Various",p:"AED 3M–200M+",e:"Established",t:"Iconic",desc:"Top area for mortgage value. Iconic island."},
+{n:"Dubai Islands (Deira)",d:"Nakheel",lat:25.2950,lng:55.3560,c:"mid",s:"Under Construction",u:"~25,000",p:"AED 500K–5M",e:"2026-2028",t:"New Supply",desc:"Formerly Deira Islands. Major new supply."},
+{n:"Nakheel District One West",d:"Nakheel",lat:25.1570,lng:55.2980,c:"luxury",s:"Under Construction",u:"Villas",p:"AED 5M+",e:"2027",t:"MBR City",desc:"Premium villas in MBR City."},
+{n:"Nad Al Sheba Gardens",d:"Meraas/Nakheel",lat:25.1450,lng:55.3400,c:"mid",s:"Under Construction",u:"Community",p:"AED 2M–8M",e:"2026-2028",t:"Family",desc:"Family-oriented master community."},
+
+// ─── MERAAS ───
+{n:"The Acres",d:"Meraas",lat:25.0950,lng:55.3100,c:"mid",s:"Under Construction",u:"Villas/TH",p:"AED 2M–6M",e:"2026-2028",t:"Nature Living",desc:"Dubailand. Lush outdoor-centric."},
+{n:"City Walk Residences",d:"Meraas",lat:25.2080,lng:55.2600,c:"luxury",s:"Active",u:"Mixed-Use",p:"AED 2M–12M",e:"Established",t:"Lifestyle",desc:"Al Wasl. Retail + residential destination."},
+{n:"Bluewaters Island",d:"Meraas",lat:25.0790,lng:55.1190,c:"luxury",s:"Active",u:"Various",p:"AED 2M–15M",e:"Established",t:"Ain Dubai",desc:"Home to Ain Dubai. Waterfront living."},
+{n:"Jumeira Bay",d:"Meraas",lat:25.2050,lng:55.2550,c:"luxury",s:"Under Construction",u:"Mixed-Use",p:"AED 5M+",e:"2027",t:"Premium",desc:"Ultra-premium island development."},
+
+// ─── OMNIYAT ───
+{n:"One at Palm Jumeirah",d:"Omniyat",lat:25.1160,lng:55.1360,c:"luxury",s:"Completed",u:"Ultra-luxury",p:"AED 15M–100M+",e:"Completed",t:"Crown",desc:"Crown of the Palm. 3-4BR + penthouses."},
+{n:"The Opus by Zaha Hadid",d:"Omniyat",lat:25.1890,lng:55.2680,c:"luxury",s:"Completed",u:"Mixed-Use",p:"AED 3M+",e:"Completed",t:"Zaha Hadid",desc:"Iconic Zaha Hadid design. ME by Melia."},
+{n:"AVANTI Tower",d:"Omniyat",lat:25.1870,lng:55.2690,c:"luxury",s:"Under Construction",u:"Tower",p:"AED 5M+",e:"2027",t:"Business Bay",desc:"Ultra-luxury tower. Business Bay."},
+{n:"The Lana Residences",d:"Omniyat",lat:25.1950,lng:55.2760,c:"luxury",s:"Completed",u:"Branded",p:"AED 8M+",e:"Completed",t:"Dorchester",desc:"Dorchester Collection branded."},
+
+// ─── SELECT GROUP ───
+{n:"Six Senses Residences The Palm",d:"Select Group",lat:25.1150,lng:55.1370,c:"luxury",s:"Under Construction",u:"Branded",p:"AED 10M+",e:"2026",t:"Wellness",desc:"Wellness-branded. Palm Jumeirah."},
+{n:"Peninsula Business Bay",d:"Select Group",lat:25.1845,lng:55.2645,c:"mid",s:"Active",u:"Towers",p:"AED 1.5M+",e:"Established",t:"Waterfront",desc:"Business Bay waterfront complex."},
+
+// ─── DUBAI PROPERTIES ───
+{n:"Jumeirah Beach Residence (JBR)",d:"Dubai Properties",lat:25.0780,lng:55.1350,c:"mid",s:"Active",u:"~6,900",p:"AED 1M–8M",e:"Established",t:"Beachfront",desc:"Iconic beachfront promenade."},
+{n:"La Vie at JBR",d:"Dubai Properties",lat:25.0785,lng:55.1355,c:"luxury",s:"Under Construction",u:"Tower",p:"AED 2M+",e:"2027",t:"JBR Premium",desc:"Premium tower in JBR."},
+
+// ─── ESTABLISHED AREAS (High Transaction Volume) ───
+{n:"Business Bay",d:"Various",lat:25.1851,lng:55.2651,c:"commercial",s:"Active",u:"Top 3 value",p:"AED 700K–5M",e:"Established",t:"Investment Hub",desc:"Top 3 by both count AND value. AED 917B year."},
+{n:"Dubai Marina",d:"Various",lat:25.0770,lng:55.1340,c:"mid",s:"Active",u:"~60,000",p:"AED 800K–8M",e:"Established",t:"#1 Value",desc:"Led H1 2025 transaction value. Top mortgage area."},
+{n:"Jumeirah Village Circle (JVC)",d:"Various",lat:25.0646,lng:55.2085,c:"affordable",s:"Active",u:"17,915 deals",p:"AED 350K–2M",e:"Established",t:"#1 Volume",desc:"Highest transaction count 2025. 17,915 deals."},
+{n:"Al Barsha South / Arjan",d:"Various",lat:25.0530,lng:55.2350,c:"affordable",s:"Active",u:"10,469 H1",p:"AED 400K–1.8M",e:"Established",t:"Fastest Growth",desc:"Topped H1 2025 count. Rapid growth."},
+{n:"Wadi Al Safa 5",d:"Various",lat:25.0750,lng:55.2800,c:"affordable",s:"Active",u:"AED 15.3B",p:"AED 500K–3M",e:"Active",t:"Hot Market",desc:"3rd highest transaction volume."},
+{n:"Dubai Residence Complex",d:"Various",lat:25.0430,lng:55.2470,c:"affordable",s:"Active",u:"High volume",p:"AED 300K–1.5M",e:"Established",t:"Value",desc:"Key primary market driver 2025."},
+{n:"Dubai Investment Park",d:"Various",lat:25.0000,lng:55.1700,c:"affordable",s:"Active",u:"High volume",p:"AED 350K–3.5M",e:"Established",t:"Emerging",desc:"Industrial + residential mix."},
+{n:"Jebel Ali First",d:"Various",lat:25.0200,lng:55.0700,c:"affordable",s:"Active",u:"Top 10 mortgage",p:"AED 300K–2M",e:"Active",t:"Industrial+",desc:"Top 10 mortgage transactions."},
+{n:"Dubai Airport City",d:"Various",lat:25.2450,lng:55.3650,c:"commercial",s:"Active",u:"AED 15.2B H1",p:"AED 400K–5M",e:"Active",t:"Logistics",desc:"Top 5 by count. Major commercial corridor."},
+
+// ─── COMMERCIAL ───
+{n:"JLT (Jumeirah Lakes Towers)",d:"DMCC",lat:25.0700,lng:55.1480,c:"commercial",s:"Active",u:"87 towers",p:"AED 500K–5M",e:"Established",t:"DMCC Hub",desc:"Most active commercial area. Office + resi mix."},
+{n:"DIFC",d:"DIFC Authority",lat:25.2100,lng:55.2800,c:"commercial",s:"Expanding",u:"Gate District+",p:"AED 2M–20M+",e:"Active",t:"Finance Hub",desc:"Innovation Hub expansion. Premium offices."},
+{n:"Meydan One District",d:"Meydan",lat:25.1630,lng:55.3000,c:"commercial",s:"Under Construction",u:"Mixed-use",p:"AED 1M–10M+",e:"2027-2029",t:"Entertainment",desc:"Tallest indoor ski slope. Mega mall."},
+{n:"One Za'abeel",d:"Ithra Dubai",lat:25.2225,lng:55.2868,c:"luxury",s:"Completed 2025",u:"263 residences",p:"AED 5M–60M+",e:"Completed",t:"Landmark",desc:"Linked towers. One&Only branded."},
+{n:"Ciel Tower",d:"The First Group",lat:25.0785,lng:55.1375,c:"luxury",s:"Near Completion",u:"1,042 suites",p:"AED 1.5M–8M",e:"2025",t:"Tallest Hotel",desc:"World's tallest hotel. Dubai Marina."},
+{n:"Baccarat Hotel",d:"Shamal Holding",lat:25.1980,lng:55.2740,c:"luxury",s:"Under Construction",u:"Hotel+Resi",p:"AED 4M–30M+",e:"2026",t:"Crystal Luxury",desc:"French crystal brand. Downtown Dubai."},
+
+// ─── ADDITIONAL HIGH-VOLUME AREAS ───
+{n:"Dubai Sports City",d:"Various",lat:25.0510,lng:55.2210,c:"affordable",s:"Active",u:"Community",p:"AED 400K–2.5M",e:"Established",t:"Sports Hub",desc:"Sports venues, residential growth. 57% ROI."},
+{n:"Dubai Silicon Oasis",d:"Various",lat:25.1300,lng:55.3800,c:"affordable",s:"Active",u:"Tech hub",p:"AED 350K–2M",e:"Established",t:"Tech Zone",desc:"Tech-focused. Binghatti, Azizi projects."},
+{n:"Discovery Gardens",d:"Various",lat:25.0440,lng:55.1490,c:"affordable",s:"Active",u:"Community",p:"AED 300K–1.2M",e:"Established",t:"Budget",desc:"Most affordable established community."},
+{n:"International City",d:"Various",lat:25.3150,lng:55.3850,c:"affordable",s:"Active",u:"Community",p:"AED 250K–900K",e:"Established",t:"Entry Point",desc:"Lowest entry point. Danube Petalz."},
+{n:"Jumeirah Village Triangle",d:"Various",lat:25.0590,lng:55.2150,c:"affordable",s:"Active",u:"Community",p:"AED 450K–2M",e:"Active",t:"JVT",desc:"Samana, Danube Fashionz projects."},
+{n:"Dubai Production City",d:"Various",lat:25.0400,lng:55.1840,c:"affordable",s:"Active",u:"Community",p:"AED 400K–1.5M",e:"Active",t:"IMPZ",desc:"Media hub. Samana, Binghatti projects."},
+{n:"Al Furjan",d:"Various",lat:25.0370,lng:55.1540,c:"affordable",s:"Active",u:"Community",p:"AED 500K–3M",e:"Established",t:"Family",desc:"Family area. Metro connected. Azizi hub."},
+{n:"Motor City",d:"Various",lat:25.0460,lng:55.2280,c:"affordable",s:"Active",u:"Community",p:"AED 500K–2.5M",e:"Established",t:"Motorsport",desc:"Autodrome. Sobha Solis here."},
+{n:"Dubai Studio City",d:"Various",lat:25.0470,lng:55.2010,c:"affordable",s:"Active",u:"Community",p:"AED 450K–1.5M",e:"Active",t:"Media Hub",desc:"Azizi Beach Oasis, Samana Mykonos."},
+{n:"Majan / Dubailand",d:"Various",lat:25.0710,lng:55.2710,c:"affordable",s:"Active",u:"Emerging",p:"AED 500K–2M",e:"Active",t:"Growth Area",desc:"Samana Barari projects. Long-term value."},
+{n:"Al Jaddaf",d:"Various",lat:25.2250,lng:55.3200,c:"mid",s:"Active",u:"Waterfront",p:"AED 800K–4M",e:"Active",t:"Creek Side",desc:"Azizi, Ellington, Binghatti projects."},
+
+// ─── BRANDED RESIDENCES ───
+{n:"Bugatti Residences by Binghatti",d:"Binghatti × Bugatti",lat:25.1878,lng:55.2618,c:"branded",s:"Under Construction",u:"182 residences",p:"AED 19.1M–550M",e:"Q4 2025",t:"Bugatti",desc:"Ultra-luxury automotive branded. Record AED 550M sale. Sky Mansions."},
+{n:"Burj Binghatti Jacob & Co",d:"Binghatti × Jacob & Co",lat:25.1832,lng:55.2642,c:"branded",s:"Under Construction",u:"100+ floors",p:"AED 8.2M–40M+",e:"Q2 2026",t:"Jacob & Co",desc:"World's tallest residential. Diamond-inspired hypertower."},
+{n:"Mercedes-Benz Places Downtown",d:"Binghatti × Mercedes-Benz",lat:25.1985,lng:55.2728,c:"branded",s:"Under Construction",u:"65-storey 150 units",p:"AED 8.8M+",e:"Q4 2026",t:"Mercedes-Benz",desc:"First Mercedes-Benz branded residences globally."},
+{n:"Mercedes-Benz Binghatti City",d:"Binghatti × Mercedes-Benz",lat:25.1602,lng:55.3082,c:"branded",s:"Launching 2026",u:"12 towers 13,000 units",p:"AED 2M–30M+",e:"2028-2032",t:"Mercedes-Benz",desc:"AED 30B masterplan in Meydan. Self-sustained branded city."},
+{n:"Chelsea Residences Maritime",d:"DAMAC × Chelsea FC",lat:25.2342,lng:55.2758,c:"branded",s:"Under Construction",u:"6 towers",p:"AED 1M–5M",e:"2027",t:"Chelsea FC",desc:"Football-branded waterfront residences. DAMAC development."},
+{n:"Cavalli Tower",d:"DAMAC × Cavalli",lat:25.1898,lng:55.2658,c:"branded",s:"Under Construction",u:"Tower",p:"AED 16.5M+",e:"Q4 2025",t:"Roberto Cavalli",desc:"Fashion-branded canal living. Private terraces & infinity pools."},
+{n:"DAMAC Bay by Cavalli",d:"DAMAC × Cavalli",lat:25.0812,lng:55.1358,c:"branded",s:"Under Construction",u:"Seafront tower",p:"AED 2.9M+",e:"Q3 2027",t:"Roberto Cavalli",desc:"Couture-inspired seafront homes near Marina."},
+{n:"Versace Residences (Palazzo Versace)",d:"DAMAC × Versace",lat:25.2280,lng:55.3150,c:"branded",s:"Active",u:"Hotel + Residences",p:"AED 3M–15M",e:"Delivered",t:"Versace",desc:"Culture Village. Luxury hotel residences by Versace."},
+{n:"DAMAC Safa One de Grisogono",d:"DAMAC × de Grisogono",lat:25.1852,lng:55.2528,c:"branded",s:"Under Construction",u:"Tower",p:"AED 1.62M–15M+",e:"Q1 2026",t:"de Grisogono",desc:"Gemstone-inspired aesthetics. Edge of Safa Park."},
+{n:"Danube Viewz × Aston Martin",d:"Danube × Aston Martin",lat:25.0708,lng:55.1488,c:"branded",s:"Under Construction",u:"Tower",p:"AED 950K+",e:"Q2 2026",t:"Aston Martin",desc:"Automotive-branded JLT tower. Mid-market entry branded."},
+{n:"Danube Fashionz × FashionTV",d:"Danube × FashionTV",lat:25.0612,lng:55.2098,c:"branded",s:"Under Construction",u:"Tower",p:"AED 650K+",e:"Q3 2026",t:"FashionTV",desc:"Fashion-inspired JVT tower. 1% payment plan."},
+{n:"Ritz-Carlton Residences BB",d:"Khamas Group × Ritz-Carlton",lat:25.1862,lng:55.2672,c:"branded",s:"Under Construction",u:"Tower",p:"AED 3.5M+",e:"2025",t:"Ritz-Carlton",desc:"AED 1.5B project. Dubai Canal and skyline views."},
+{n:"Address Residences Creek Harbour",d:"Emaar × Address Hotels",lat:25.2055,lng:55.3445,c:"branded",s:"Under Construction",u:"Tower",p:"AED 1.8M+",e:"2027",t:"Address Hotels",desc:"Branded hotel residences in Creek Harbour by Emaar."},
+{n:"Vida Residences Dubai Hills",d:"Emaar × Vida Hotels",lat:25.1312,lng:55.2258,c:"branded",s:"Under Construction",u:"Branded tower",p:"AED 1.8M–8M",e:"2027",t:"Vida Hotels",desc:"Vida-branded in Hills. Hotel services & premium."},
+{n:"Armani Beach Residences",d:"Arada × Armani/Casa",lat:25.1118,lng:55.1395,c:"branded",s:"Under Construction",u:"53 residences",p:"AED 21M+",e:"Dec 2026",t:"Armani",desc:"Palm Jumeirah east crescent. Tadao Ando design."},
+{n:"Aman Residences Palm",d:"Aldar × Aman",lat:25.1155,lng:55.1375,c:"branded",s:"Under Construction",u:"Ultra-luxury",p:"AED 35M+",e:"2026",t:"Aman Resorts",desc:"Most expensive branded in Dubai. $3,593/sqft avg."},
+{n:"Bulgari Lighthouse",d:"Meraas × Bulgari",lat:25.2065,lng:55.2560,c:"branded",s:"Under Construction",u:"27 penthouses",p:"AED 39M+",e:"2026",t:"Bulgari",desc:"Jumeirah Bay Island. Coral-inspired. Italian ultra-luxury."},
+{n:"AVA Dorchester Collection",d:"Omniyat × Dorchester",lat:25.1162,lng:55.1365,c:"branded",s:"Near Completion",u:"17 residences",p:"AED 50M+",e:"2025",t:"Dorchester",desc:"Palm Jumeirah. 17 ultra-exclusive residences."},
+{n:"One Palm Dorchester",d:"Omniyat × Dorchester",lat:25.1165,lng:55.1362,c:"branded",s:"Completed",u:"90 residences",p:"AED 15M–100M+",e:"Delivered",t:"Dorchester",desc:"Crown of Palm. Ultra-luxury beachfront."},
+{n:"Six Senses The Palm",d:"Select Group × Six Senses",lat:25.1152,lng:55.1372,c:"branded",s:"Under Construction",u:"Branded tower",p:"AED 10M+",e:"2026",t:"Six Senses",desc:"Wellness-branded Palm. Six Senses hospitality."},
+{n:"Baccarat Hotel & Residences",d:"H&H × Baccarat",lat:25.1982,lng:55.2738,c:"branded",s:"Under Construction",u:"Hotel + Residences",p:"AED 4M–30M+",e:"2026",t:"Baccarat",desc:"French crystal luxury. Downtown Dubai."},
+{n:"Trump Tower Dubai",d:"DarGlobal × Trump Org",lat:25.1975,lng:55.2750,c:"branded",s:"Under Construction",u:"80 floors",p:"AED 3M+",e:"2028",t:"Trump",desc:"Downtown Dubai. 1-4BR + penthouses by DarGlobal."},
+{n:"Atlantis The Royal Residences",d:"Kerzner × Atlantis",lat:25.1310,lng:55.1170,c:"branded",s:"Active",u:"Residences",p:"AED 10M+",e:"Delivered",t:"Atlantis",desc:"Palm Jumeirah. Ultra-luxury hotel residences."},
+{n:"Jumeirah Asora Bay",d:"Meraas × Jumeirah",lat:25.2350,lng:55.2420,c:"branded",s:"Under Construction",u:"4-7BR",p:"AED 15M+",e:"2027",t:"Jumeirah Hotels",desc:"La Mer. Record $44.6M penthouse sale H1 2025."},
+{n:"Bentley Residences (Mira)",d:"Mira × Bentley",lat:25.0700,lng:55.1350,c:"branded",s:"Under Construction",u:"Tower",p:"AED 5M+",e:"2027",t:"Bentley",desc:"Mira Developments. Turnkey luxury."},
+{n:"Trussardi Residences (Mira)",d:"Mira × Trussardi",lat:25.0800,lng:55.1300,c:"branded",s:"Under Construction",u:"Tower",p:"AED 3M+",e:"2027",t:"Trussardi",desc:"Italian fashion branded. Mira Developments."},
+{n:"Fendi Residences DAMAC Hills",d:"DAMAC × Fendi Casa",lat:25.0420,lng:55.2410,c:"branded",s:"Active",u:"Villas",p:"AED 5M+",e:"Delivered",t:"Fendi Casa",desc:"DAMAC Hills. Italian fashion branded villas."},
+{n:"Paramount Tower Hotel & Residences",d:"DAMAC × Paramount",lat:25.1865,lng:55.2665,c:"branded",s:"Active",u:"4 towers 2,000 units",p:"AED 1.5M+",e:"Delivered",t:"Paramount",desc:"Business Bay. Cinema-inspired branded living."},
+];
+
+// ══════════════════════════════════════════════
+
+// ══════════════════════════════════════════════
+// HEATMAP DATA
+// ══════════════════════════════════════════════
+const heatData=[
+[25.1851,55.2651,.95],[25.077,55.134,.92],[25.1124,55.139,.88],[25.1972,55.2744,.87],
+[25.053,55.235,.85],[25.0646,55.2085,.93],[25.158,55.305,.82],[25.245,55.365,.80],
+[25.075,55.28,.78],[25.02,55.07,.65],[25.21,55.28,.72],[25.1289,55.228,.75],
+[25.035,55.225,.60],[25.232,55.274,.55],[25.295,55.356,.50],[25.17,55.32,.68],
+[25.081,55.1285,.70],[25.0,55.17,.55],[24.97,55.15,.45],[24.89,55.16,.40],
+[25.2048,55.344,.65],[25.043,55.247,.72],[25.07,55.148,.68],[25.095,55.31,.48],
+[25.15,55.25,.50],[25.12,55.20,.45],[25.10,55.18,.40],[25.08,55.22,.55],
+[25.18,55.28,.60],[25.20,55.30,.50],[25.07,55.16,.48],[25.05,55.19,.52],
+[25.16,55.27,.58],[25.22,55.32,.42],[25.03,55.20,.38],[25.09,55.25,.50],
+[25.044,55.248,.66],[25.051,55.222,.45],[25.037,55.154,.42],[25.046,55.201,.40],
+[25.130,55.380,.35],[25.315,55.385,.30],[25.059,55.215,.55],
+];
+
+// ══════════════════════════════════════════════
+// MAP INIT
+// ══════════════════════════════════════════════
+const map=L.map('map',{center:[25.10,55.20],zoom:11,zoomControl:false,attributionControl:false});
+L.control.zoom({position:'topright'}).addTo(map);
+L.tileLayer('https://api.mapbox.com/styles/v1/mapbox/dark-v11/tiles/{z}/{x}/{y}?access_token=MAPBOX_TOKEN',{maxZoom:20,tileSize:512,zoomOffset:-1,attribution:'Mapbox'}).addTo(map);
+
+const catColors={mega:'#8b5cf6',luxury:'#e0a526',mid:'#3b82f6',affordable:'#00e5a0',commercial:'#64748b',branded:'#f472b6'};
+const catSizes={mega:26,luxury:20,mid:18,affordable:16,commercial:18,branded:22};
+const tagClasses={mega:'tag-mega',luxury:'tag-luxury',mid:'tag-mid',affordable:'tag-affordable',commercial:'tag-commercial',branded:'tag-branded'};
+
+// ══════════════════════════════════════════════
+// MARKERS
+// ══════════════════════════════════════════════
+const markerLayers={};
+const allMarkers=[];
+// Create cluster groups per category for filtered toggling
+const clusterOptions={maxClusterRadius:50,spiderfyOnMaxZoom:true,showCoverageOnHover:false,zoomToBoundsOnClick:true,disableClusteringAtZoom:15};
+
+// ══════════════════════════════════════════════
+// MARKET INTELLIGENCE ENGINE v2
+// Intent-driven: each project scored for buyer goals
+// ══════════════════════════════════════════════
+// bestFor: array of buyer intents this project serves
+// Intents: "capital-appreciation", "rental-income", "family-home", "growing-area", "branded-prestige", "flip", "first-home", "retirement", "holiday-home"
+// vs: hand-curated comparison — the ONE project a buyer would realistically choose between
+// why: human-readable reason the comparison matters
+// edge: what makes THIS project win over the comparison for the right buyer
+
+const MI={
+"Dubai Creek Harbour":{yield:"6–8%",roi:"15–25% in 5 yrs",psf:"1,500–2,500",pp:"80/20",bestFor:["capital-appreciation","growing-area"],vs:"Dubai Hills Estate",why:"Both Emaar mega-communities at similar price, different lifestyles",edge:"Creek Harbour bets on waterfront + metro. Hills wins on green suburban feel."},
+"Palm Jebel Ali":{yield:"5–7%",roi:"20–35% in 5 yrs",psf:"1,200–2,500",pp:"60/40",bestFor:["capital-appreciation","holiday-home"],vs:"Palm Jumeirah",why:"Both palm islands — one proven, one bigger upside",edge:"Jebel Ali has 3–5× lower entry. Jumeirah has proven rental demand."},
+"Emaar The Oasis":{yield:"4–6%",roi:"20–30% in 5 yrs",psf:"1,800–3,500",pp:"80/20",bestFor:["family-home","capital-appreciation"],vs:"Sobha Sanctuary",why:"Dubai's two biggest luxury master plans — AED 73B vs AED 50B",edge:"Oasis has Emaar brand reach. Sanctuary has Sobha build quality."},
+"Dubai South / Al Maktoum Airport":{yield:"7–9%",roi:"15–25% in 5 yrs",psf:"700–1,200",pp:"Various",bestFor:["growing-area","first-home"],vs:"Expo City Dubai",why:"Adjacent emerging zones both betting on airport expansion",edge:"Dubai South is larger master plan. Expo City has faster infra maturity."},
+"Expo City Dubai":{yield:"6–8%",roi:"12–20% in 3 yrs",psf:"1,000–1,600",pp:"Various",bestFor:["growing-area","capital-appreciation"],vs:"Dubai South / Al Maktoum Airport",why:"Sister developments on the same southern growth corridor",edge:"Expo has existing infra. Dubai South is cheaper entry."},
+"DAMAC Islands":{yield:"5–7%",roi:"15–25% in 5 yrs",psf:"1,200–2,000",pp:"75/25",bestFor:["holiday-home","capital-appreciation"],vs:"Palm Jebel Ali",why:"Off-coast island mega-projects targeting waterfront premium",edge:"DAMAC Islands is themed resort. Jebel Ali has traditional palm villa plots."},
+"MBR City / Meydan":{yield:"6–8%",roi:"12–18% in 3 yrs",psf:"1,400–2,200",pp:"Various",bestFor:["family-home","capital-appreciation"],vs:"Dubai Hills Estate",why:"Two biggest master communities — similar pricing, different maturity",edge:"MBR has lagoons + Meydan Mall coming. Hills has the established mall."},
+"Mercedes-Benz Places – Binghatti City":{yield:"5–7%",roi:"18–28% in 5 yrs",psf:"2,000–3,500",pp:"70/30",bestFor:["branded-prestige","capital-appreciation"],vs:"Burj Binghatti Jacob & Co",why:"Binghatti branded mega-plays — city vs tower",edge:"MB City is AED 30B masterplan. Burj is single iconic tower."},
+"Dubai Mansions (Emaar Hills)":{yield:"3–5%",roi:"20–35% in 7 yrs",psf:"2,500–5,000",pp:"TBA",bestFor:["family-home","capital-appreciation"],vs:"Emaar The Oasis",why:"Emaar's two ultra-luxury villa plays at AED 10M+ entry",edge:"Mansions sits within Hills infrastructure. Oasis is standalone city."},
+"Downtown Dubai / Burj Khalifa":{yield:"5–7%",roi:"8–12% in 2 yrs",psf:"2,200–4,000",pp:"Resale",bestFor:["flip","rental-income"],vs:"DIFC",why:"Two prime urban addresses 10 min apart, different tenant profiles",edge:"Downtown is tourism + lifestyle. DIFC is corporate + HNWI."},
+"Emaar Beachfront":{yield:"6–8%",roi:"10–15% in 3 yrs",psf:"2,000–3,000",pp:"80/20",bestFor:["rental-income","holiday-home"],vs:"Dubai Marina",why:"Next to each other — gated new vs established and liquid",edge:"Beachfront has private beach. Marina has more exits and walkability."},
+"Dubai Hills Estate":{yield:"6–8%",roi:"12–18% in 3 yrs",psf:"1,500–2,500",pp:"80/20",bestFor:["family-home","growing-area"],vs:"Dubai Creek Harbour",why:"Emaar's two flagships — suburban green vs waterfront urban",edge:"Hills has mall and schools today. Creek is the future bet."},
+"The Valley":{yield:"7–9%",roi:"15–22% in 4 yrs",psf:"1,000–1,400",pp:"80/20",bestFor:["family-home","growing-area"],vs:"DAMAC Lagoons",why:"Competing family townhouse communities at AED 1.3M–4M",edge:"Valley is Emaar quality. Lagoons has Mediterranean lifestyle."},
+"Emaar South":{yield:"7–9%",roi:"15–20% in 4 yrs",psf:"1,000–1,500",pp:"80/20",bestFor:["growing-area","rental-income"],vs:"Expo City Dubai",why:"Side-by-side along southern growth corridor",edge:"Emaar South has golf course. Expo City has metro."},
+"Dubai Creek Harbour – Silva":{yield:"6–8%",roi:"12–18% in 3 yrs",psf:"1,600–2,200",pp:"80/20",bestFor:["capital-appreciation","growing-area"],vs:"Dubai Creek Harbour",why:"Latest tower launch vs broader Creek Harbour stock",edge:"Silva has launch pricing. Creek resale may offer better value/sqft."},
+"Emaar Vida Residences Hillside":{yield:"5–7%",roi:"10–15% in 3 yrs",psf:"2,200–3,200",pp:"80/20",bestFor:["branded-prestige","rental-income"],vs:"Dubai Hills Estate",why:"Branded tower within Hills vs general community stock",edge:"Vida has hotel services premium. Hills general is cheaper entry."},
+"Grand Polo Club & Resort":{yield:"4–6%",roi:"15–25% in 5 yrs",psf:"1,500–2,500",pp:"80/20",bestFor:["family-home","branded-prestige"],vs:"Sobha Elwood",why:"Luxury villa communities on Al Ain Road corridor",edge:"Polo Club has equestrian lifestyle. Elwood has Sobha build quality."},
+"DAMAC Hills":{yield:"6–8%",roi:"10–15% in 3 yrs",psf:"1,200–2,000",pp:"Various",bestFor:["family-home","rental-income"],vs:"Dubai Hills Estate",why:"Two golf-anchored communities by different developers",edge:"DAMAC Hills has Trump golf + delivered stock. Hills has better trajectory."},
+"DAMAC Hills 2":{yield:"7–9%",roi:"10–18% in 3 yrs",psf:"600–1,000",pp:"75/25",bestFor:["first-home","rental-income"],vs:"Jumeirah Village Circle (JVC)",why:"Budget buyer's dilemma — suburban villa vs urban apartment",edge:"Hills 2 has villas from AED 400K. JVC has higher liquidity."},
+"DAMAC Lagoons":{yield:"7–9%",roi:"12–20% in 3 yrs",psf:"900–1,400",pp:"60/40",bestFor:["family-home","growing-area"],vs:"The Valley",why:"The townhouse showdown — Mediterranean vs Emaar suburban",edge:"Lagoons has crystal lagoons. Valley has Emaar resale premium."},
+"DAMAC Safa One":{yield:"5–7%",roi:"10–15% in 2 yrs",psf:"2,000–3,000",pp:"90/10",bestFor:["flip","branded-prestige"],vs:"The Crestmark",why:"Canal-side towers — DAMAC branded vs Ellington design-led",edge:"Safa One is de Grisogono branded. Crestmark is understated craft."},
+"DAMAC Safa Two":{yield:"5–7%",roi:"10–15% in 3 yrs",psf:"2,200–3,200",pp:"60/40",bestFor:["capital-appreciation","branded-prestige"],vs:"DAMAC Safa One",why:"Sister towers across the canal — phased pricing",edge:"Safa Two has Burj Al Arab views. Safa One has earlier handover."},
+"Cavalli Couture":{yield:"4–5%",roi:"8–12% in 2 yrs",psf:"4,000–6,000",pp:"60/40",bestFor:["branded-prestige","holiday-home"],vs:"One Za'abeel",why:"Ultra-luxury branded — both AED 15M+ entry",edge:"Cavalli is fashion-branded canal. Za'abeel is architectural icon."},
+"Chelsea Residences":{yield:"6–8%",roi:"10–15% in 3 yrs",psf:"1,400–2,000",pp:"75/25",bestFor:["rental-income","branded-prestige"],vs:"Danube Oceanz",why:"Maritime City neighbours — branded vs value",edge:"Chelsea has sports brand. Oceanz has 1% payment plan."},
+"DAMAC Chic Tower":{yield:"6–8%",roi:"10–12% in 2 yrs",psf:"1,400–1,800",pp:"80/20",bestFor:["rental-income","flip"],vs:"Binghatti Skyrise",why:"BB towers at similar AED 800K–3M entry",edge:"Chic has canal views. Skyrise has 3,333 units of scale."},
+"DAMAC Bay by Cavalli":{yield:"5–7%",roi:"10–15% in 3 yrs",psf:"3,000–5,000",pp:"60/40",bestFor:["branded-prestige","holiday-home"],vs:"Emaar Beachfront",why:"Seafront branded vs gated beachfront",edge:"Bay has couture branding. Beachfront has Address hotel services."},
+"DAMAC Utopia":{yield:"4–6%",roi:"12–18% in 4 yrs",psf:"2,500–4,000",pp:"60/40",bestFor:["family-home","branded-prestige"],vs:"Grand Polo Club & Resort",why:"Ultra-luxury golf mansions — DAMAC vs Emaar",edge:"Utopia has resort feel. Polo Club has equestrian factor."},
+"DAMAC Riverside":{yield:"7–9%",roi:"12–18% in 4 yrs",psf:"800–1,200",pp:"75/25",bestFor:["family-home","growing-area"],vs:"The Valley",why:"Family townhouses — DIP vs Al Ain Road",edge:"Riverside is cheaper in DIP. Valley has Emaar brand pull."},
+"DAMAC Canal Heights":{yield:"6–8%",roi:"10–15% in 3 yrs",psf:"1,600–2,200",pp:"60/40",bestFor:["rental-income","capital-appreciation"],vs:"One by Binghatti",why:"BB canal towers — DAMAC wellness vs Binghatti geometric",edge:"Canal Heights has lagoon + wellness. One by Binghatti has edgier design."},
+"DAMAC Harbour Lights":{yield:"6–8%",roi:"10–15% in 3 yrs",psf:"1,400–2,000",pp:"80/20",bestFor:["growing-area","rental-income"],vs:"Danube Oceanz",why:"Maritime City high-rises — DAMAC vs Danube",edge:"Harbour Lights is DAMAC quality. Oceanz has 1% monthly plan."},
+"Burj Binghatti Jacob & Co":{yield:"4–6%",roi:"10–18% in 3 yrs",psf:"5,000–8,000",pp:"80/20",bestFor:["branded-prestige","flip"],vs:"Bugatti Residences",why:"Binghatti's two ultra-luxury BB towers — jewellery vs auto",edge:"Burj is taller. Bugatti has earlier handover."},
+"Bugatti Residences":{yield:"3–5%",roi:"8–15% in 3 yrs",psf:"8,000–15,000",pp:"70/30",bestFor:["branded-prestige","flip"],vs:"Burj Binghatti Jacob & Co",why:"Sister projects redefining Dubai luxury",edge:"Bugatti targets collectors. Burj targets skyline."},
+"Mercedes-Benz Places":{yield:"5–7%",roi:"10–15% in 3 yrs",psf:"4,500–7,000",pp:"70/30",bestFor:["branded-prestige","capital-appreciation"],vs:"Downtown Dubai / Burj Khalifa",why:"Downtown premium — branded new vs established resale",edge:"Mercedes has smart-living tech. Downtown has proven exits."},
+"One by Binghatti":{yield:"6–8%",roi:"10–15% in 3 yrs",psf:"1,600–2,200",pp:"70/30",bestFor:["rental-income","flip"],vs:"DAMAC Chic Tower",why:"BB canal towers at AED 1–3M",edge:"One has distinctive design. Chic has DAMAC payment plan."},
+"Binghatti Skyrise":{yield:"7–9%",roi:"10–15% in 2 yrs",psf:"1,400–1,800",pp:"70/30",bestFor:["rental-income","first-home"],vs:"Business Bay",why:"3,333-unit tower vs broader BB tenant pool",edge:"Skyrise is new at AED 700K. BB established has immediate income."},
+"Binghatti Aurora":{yield:"8–10%",roi:"10–15% in 2 yrs",psf:"1,100–1,500",pp:"70/30",bestFor:["rental-income","first-home"],vs:"Samana Waves",why:"JVC yield battle — geometric design vs private pools",edge:"Aurora is AED 667K entry. Samana includes pools as standard."},
+"Binghatti Phoenix":{yield:"8–10%",roi:"10–15% in 2 yrs",psf:"1,100–1,500",pp:"70/30",bestFor:["rental-income","first-home"],vs:"Binghatti Aurora",why:"Same developer, same area — which JVC tower?",edge:"Phoenix has earlier handover. Aurora has newer design."},
+"Binghatti Ruby":{yield:"8–10%",roi:"10–15% in 2 yrs",psf:"1,000–1,400",pp:"70/30",bestFor:["rental-income","first-home"],vs:"Samana Waves",why:"JVC affordable towers competing for same tenant pool",edge:"Ruby has 3BR option. Waves has private pool per unit."},
+"Binghatti Hills":{yield:"7–9%",roi:"10–15% in 3 yrs",psf:"1,000–1,400",pp:"70/30",bestFor:["rental-income","growing-area"],vs:"Samana Portofino",why:"Affordable suburban — Science Park vs IMPZ",edge:"Hills near hospitals. Portofino has Riviera design."},
+"Binghatti Hillside":{yield:"7–9%",roi:"10–15% in 3 yrs",psf:"1,000–1,400",pp:"50/50",bestFor:["rental-income","growing-area"],vs:"Binghatti Hills",why:"Same area — tower vs mid-rise wellness",edge:"Hillside is wellness mid-rise. Hills is the taller tower."},
+"Binghatti Elite":{yield:"8–10%",roi:"10–12% in 2 yrs",psf:"900–1,300",pp:"70/30",bestFor:["first-home","rental-income"],vs:"Dubai Production City",why:"Production City tower vs broader area",edge:"Elite is defined product. Area has more choice."},
+"Binghatti Haven":{yield:"7–9%",roi:"10–15% in 3 yrs",psf:"1,000–1,400",pp:"70/30",bestFor:["rental-income","growing-area"],vs:"Dubai Sports City",why:"Sports City tower vs established area",edge:"Haven targets 57% ROI. Area has existing sports infra."},
+"Binghatti Creek":{yield:"6–8%",roi:"10–15% in 3 yrs",psf:"1,600–2,200",pp:"70/30",bestFor:["capital-appreciation","rental-income"],vs:"Al Jaddaf",why:"Creek-view tower vs Jaddaf regeneration zone",edge:"Creek has canal views. Jaddaf has more developer diversity."},
+"Binghatti Palm 01":{yield:"4–6%",roi:"12–18% in 3 yrs",psf:"3,500–6,000",pp:"TBA",bestFor:["branded-prestige","holiday-home"],vs:"Ocean House",why:"Palm luxury — Binghatti coastal vs Ellington design",edge:"Palm 01 has 360° water views. Ocean House has Ellington craft."},
+"Binghatti Apex":{yield:"8–10%",roi:"10–12% in 2 yrs",psf:"1,100–1,500",pp:"70/30",bestFor:["first-home","rental-income"],vs:"Binghatti Aurora",why:"Adjacent JVC Binghatti towers",edge:"Apex has cheaper studios. Aurora has more unit variety."},
+"Sobha Hartland":{yield:"5–7%",roi:"12–18% in 3 yrs",psf:"2,000–3,000",pp:"60/40",bestFor:["family-home","capital-appreciation"],vs:"Dubai Creek Harbour",why:"Premium waterfront — Sobha craft vs Emaar scale",edge:"Hartland has unmatched build quality. Creek has mega-infra."},
+"Sobha Hartland II":{yield:"5–7%",roi:"12–18% in 3 yrs",psf:"1,800–2,800",pp:"60/40",bestFor:["capital-appreciation","family-home"],vs:"Sobha Hartland",why:"Extension vs original — same quality, different timing",edge:"II has off-plan pricing. Original has proven appreciation."},
+"Sobha One":{yield:"5–7%",roi:"15–20% in 4 yrs",psf:"1,800–2,800",pp:"60/40",bestFor:["capital-appreciation","growing-area"],vs:"Sobha Hartland",why:"Sobha flagships — different locations, same philosophy",edge:"One has nature views. Hartland has immediate amenities."},
+"Sobha Elwood":{yield:"5–6%",roi:"15–22% in 5 yrs",psf:"1,400–2,000",pp:"60/40",bestFor:["family-home","capital-appreciation"],vs:"Grand Polo Club & Resort",why:"Al Ain Road luxury villas — nature vs equestrian",edge:"Elwood has Sobha quality. Polo Club has Emaar brand."},
+"Sobha Central":{yield:"6–8%",roi:"12–15% in 3 yrs",psf:"1,800–2,500",pp:"60/40",bestFor:["capital-appreciation","rental-income"],vs:"Sobha One",why:"Sobha urban tower vs nature tower",edge:"Central has urban connectivity. One has sanctuary views."},
+"Sobha Solis":{yield:"7–9%",roi:"10–15% in 3 yrs",psf:"1,200–1,800",pp:"60/40",bestFor:["rental-income","family-home"],vs:"Motor City",why:"Motor City tower vs established area stock",edge:"Solis has Sobha build quality. Motor City resale is immediate."},
+"Sobha Sanctuary":{yield:"4–6%",roi:"18–30% in 5 yrs",psf:"1,500–3,000",pp:"60/40",bestFor:["capital-appreciation","family-home"],vs:"Emaar The Oasis",why:"AED 50B vs AED 73B — two biggest luxury master plans",edge:"Sanctuary has Sobha build quality. Oasis has Emaar brand reach."},
+"Azizi Riviera":{yield:"7–9%",roi:"10–15% in 2 yrs",psf:"1,200–1,700",pp:"40/60",bestFor:["rental-income","first-home"],vs:"Jumeirah Village Circle (JVC)",why:"MBR community vs established suburban hub",edge:"Riviera has lagoon lifestyle. JVC has proven demand."},
+"Burj Azizi":{yield:"4–6%",roi:"15–25% in 5 yrs",psf:"5,000–8,000",pp:"50/50",bestFor:["capital-appreciation","branded-prestige"],vs:"Burj Binghatti Jacob & Co",why:"Super-tower race — 2nd tallest vs tallest residential",edge:"Azizi (725m) on SZR, 2030. Binghatti in BB, 2026."},
+"Azizi Mina":{yield:"5–7%",roi:"8–12% in 2 yrs",psf:"2,500–3,500",pp:"Delivered",bestFor:["holiday-home","rental-income"],vs:"Palm Jumeirah",why:"Palm east crescent — Azizi completed vs established resale",edge:"Mina is newer delivered stock. Palm has wider choice."},
+"Azizi Venice":{yield:"8–10%",roi:"15–22% in 4 yrs",psf:"700–1,100",pp:"50/50",bestFor:["growing-area","rental-income"],vs:"Dubai South / Al Maktoum Airport",why:"Both in Dubai South — community vs broader district",edge:"Venice is lagoon-focused. Dubai South is infra mega-play."},
+"Azizi Creek Views":{yield:"6–8%",roi:"10–15% in 3 yrs",psf:"1,400–2,000",pp:"40/60",bestFor:["capital-appreciation","rental-income"],vs:"Al Jaddaf",why:"Creek-view tower in Jaddaf regeneration zone",edge:"Creek Views has specific panorama. Jaddaf has more choice."},
+"Azizi Beach Oasis":{yield:"8–10%",roi:"10–15% in 2 yrs",psf:"800–1,200",pp:"40/60",bestFor:["rental-income","first-home"],vs:"Samana Greens",why:"Affordable off-plan with resort amenities",edge:"Beach Oasis has AED 457K entry. Samana Greens has faster delivery."},
+"Azizi Riviera Reve":{yield:"7–9%",roi:"10–12% in 2 yrs",psf:"1,300–1,800",pp:"40/60",bestFor:["rental-income","capital-appreciation"],vs:"Azizi Riviera",why:"Premium vs original — same community, different finish",edge:"Reve has luxury finishes. Original has more delivered stock."},
+"Azizi Riviera Beachfront":{yield:"7–9%",roi:"10–15% in 3 yrs",psf:"1,200–1,700",pp:"40/60",bestFor:["rental-income","holiday-home"],vs:"Azizi Riviera",why:"Lagoon-front vs standard within Riviera",edge:"Beachfront has crystal lagoon views. Standard is cheaper entry."},
+"Azizi Central":{yield:"7–9%",roi:"10–12% in 2 yrs",psf:"1,000–1,500",pp:"40/60",bestFor:["first-home","rental-income"],vs:"Al Furjan",why:"Al Furjan specific tower vs broader area",edge:"Central is defined product. Al Furjan has metro + amenities."},
+"Azizi Star":{yield:"7–9%",roi:"8–12% in 2 yrs",psf:"900–1,300",pp:"Ready",bestFor:["first-home","rental-income"],vs:"Al Furjan",why:"Ready Al Furjan tower vs area resale",edge:"Star is immediate occupancy. Al Furjan has wider choice."},
+"Azizi Milan":{yield:"8–10%",roi:"15–20% in 4 yrs",psf:"700–1,100",pp:"50/50",bestFor:["growing-area","first-home"],vs:"Majan / Dubailand",why:"Dubailand emerging plays",edge:"Milan bets on future metro. Majan has established connectivity."},
+"Azizi Wasel":{yield:"7–9%",roi:"12–18% in 3 yrs",psf:"1,200–1,800",pp:"50/50",bestFor:["growing-area","capital-appreciation"],vs:"Dubai Islands (Deira)",why:"Dubai Islands — specific Azizi vs Nakheel masterplan",edge:"Wasel is upscale tower. Dubai Islands has Nakheel scale."},
+"Samana Waves":{yield:"8–10%",roi:"10–15% in 2 yrs",psf:"1,100–1,600",pp:"100/0",bestFor:["rental-income","first-home"],vs:"Binghatti Aurora",why:"JVC yield hunters — pools vs geometric at similar price",edge:"Samana includes pools in every unit. Binghatti has stronger brand."},
+"Samana Manhattan":{yield:"8–10%",roi:"10–15% in 2 yrs",psf:"1,100–1,600",pp:"100/0",bestFor:["rental-income","first-home"],vs:"Samana Waves",why:"Same developer, same area — NYC vs resort style",edge:"Manhattan has urban aesthetic. Waves has vertical forest."},
+"Samana Greens":{yield:"8–10%",roi:"8–12% in 2 yrs",psf:"900–1,300",pp:"Delivered",bestFor:["first-home","rental-income"],vs:"Al Barsha South / Arjan",why:"Specific Samana vs broader Arjan area",edge:"Greens is defined community. Arjan has more choice."},
+"Samana Portofino":{yield:"8–10%",roi:"10–15% in 2 yrs",psf:"900–1,300",pp:"100/0",bestFor:["rental-income","first-home"],vs:"Binghatti Hills",why:"Affordable suburban — IMPZ Riviera vs Science Park",edge:"Portofino has resort aesthetics. Hills has hospital proximity."},
+"Samana Skyros":{yield:"8–10%",roi:"10–15% in 2 yrs",psf:"1,000–1,400",pp:"100/0",bestFor:["rental-income","first-home"],vs:"Samana Greens",why:"Both Arjan — lagoon rooftop vs delivered stock",edge:"Skyros has rooftop pools. Greens is delivered with proven rent."},
+"Samana IVY Gardens":{yield:"8–10%",roi:"10–12% in 2 yrs",psf:"800–1,200",pp:"100/0",bestFor:["first-home","rental-income"],vs:"Dubai Residence Complex",why:"DLRC area — specific Samana vs broader area",edge:"IVY Gardens is nature-inspired. DLRC has more supply diversity."},
+"Samana California":{yield:"8–10%",roi:"10–12% in 2 yrs",psf:"900–1,300",pp:"100/0",bestFor:["first-home","rental-income"],vs:"Discovery Gardens",why:"Discovery Gardens — new Samana vs established area",edge:"California is new build with pools. DG has metro access."},
+"Samana Ocean Pearl":{yield:"6–8%",roi:"12–18% in 3 yrs",psf:"1,400–2,000",pp:"58/42",bestFor:["capital-appreciation","growing-area"],vs:"Dubai Islands (Deira)",why:"Dubai Islands — specific tower vs area-wide bet",edge:"Ocean Pearl is defined premium. Islands has more diversity."},
+"Samana Rome":{yield:"7–9%",roi:"12–15% in 3 yrs",psf:"1,400–2,000",pp:"50/50",bestFor:["capital-appreciation","rental-income"],vs:"MBR City / Meydan",why:"MBR D11 — intimate luxury vs broader area",edge:"Rome is intimate luxury. MBR has Meydan One infra."},
+"Samana Barari Views":{yield:"8–10%",roi:"12–18% in 3 yrs",psf:"800–1,200",pp:"Various",bestFor:["growing-area","first-home"],vs:"Majan / Dubailand",why:"Majan area towers — Samana vs broader zone",edge:"Barari has community plan. Majan has growing infra."},
+"Samana Ibiza":{yield:"8–10%",roi:"10–15% in 3 yrs",psf:"900–1,300",pp:"100/0",bestFor:["first-home","rental-income"],vs:"Samana IVY Gardens",why:"Both DLRC Samana — Mediterranean vs nature",edge:"Ibiza has resort flair. IVY has garden living."},
+"Samana Mykonos":{yield:"7–9%",roi:"10–15% in 3 yrs",psf:"1,000–1,500",pp:"100/0",bestFor:["rental-income","holiday-home"],vs:"Dubai Studio City",why:"Studio City — Greek island themed vs area stock",edge:"Mykonos has private pool concept. Studio City has wider choice."},
+"Samana Boulevard Heights":{yield:"8–10%",roi:"12–15% in 3 yrs",psf:"900–1,300",pp:"Various",bestFor:["family-home","growing-area"],vs:"Majan / Dubailand",why:"Dubailand family community vs area play",edge:"Boulevard has wide greens. Majan is broader bet."},
+"Ocean House":{yield:"4–6%",roi:"8–12% in 2 yrs",psf:"4,000–6,000",pp:"70/30",bestFor:["branded-prestige","holiday-home"],vs:"Palm Jumeirah",why:"Palm beachfront — Ellington boutique vs established resale",edge:"Ocean House is design-led new build. Palm is proven older stock."},
+"Ellington House 3":{yield:"6–8%",roi:"10–15% in 3 yrs",psf:"2,000–2,800",pp:"70/30",bestFor:["family-home","capital-appreciation"],vs:"Dubai Hills Estate",why:"Golf-facing Hills tower — Ellington craft vs community",edge:"Ellington has design awards. Hills has larger ecosystem."},
+"The Crestmark":{yield:"6–8%",roi:"10–15% in 3 yrs",psf:"1,800–2,500",pp:"70/30",bestFor:["rental-income","capital-appreciation"],vs:"DAMAC Safa One",why:"BB canal — Ellington craft vs DAMAC branded",edge:"Crestmark is understated quality. Safa One is de Grisogono bold."},
+"Art Bay East & West":{yield:"6–8%",roi:"10–15% in 3 yrs",psf:"1,600–2,200",pp:"70/30",bestFor:["capital-appreciation","growing-area"],vs:"Al Jaddaf",why:"Jaddaf Waterfront — Ellington art vs area play",edge:"Art Bay has Ellington DNA. Jaddaf has more developer choice."},
+"Lakeshore Villas":{yield:"4–6%",roi:"15–20% in 4 yrs",psf:"3,000–4,500",pp:"70/30",bestFor:["family-home","capital-appreciation"],vs:"Emaar The Oasis",why:"Ultra-luxury MBR villas — boutique vs mega",edge:"Lakeshore is intimate enclave. Oasis is city-scale."},
+"Waterside Villas":{yield:"4–6%",roi:"12–18% in 3 yrs",psf:"3,500–5,000",pp:"60/40",bestFor:["family-home","branded-prestige"],vs:"Lakeshore Villas",why:"Both Ellington MBR D11 ultra-luxury villas",edge:"Waterside has water frontage. Lakeshore has lake setting."},
+"Upper House":{yield:"7–9%",roi:"10–12% in 2 yrs",psf:"1,200–1,800",pp:"70/30",bestFor:["rental-income","first-home"],vs:"JLT (Jumeirah Lakes Towers)",why:"JLT-facing twin towers vs established stock",edge:"Upper House is new Ellington. JLT has proven rental demand."},
+"The Portman":{yield:"8–10%",roi:"10–15% in 2 yrs",psf:"900–1,300",pp:"70/30",bestFor:["first-home","rental-income"],vs:"Samana Waves",why:"JVC affordable — design-led vs pool amenity",edge:"Portman has AED 420K entry. Waves has pools per unit."},
+"Highgrove":{yield:"5–7%",roi:"12–18% in 4 yrs",psf:"1,500–2,200",pp:"70/30",bestFor:["family-home","capital-appreciation"],vs:"Sobha Hartland",why:"Premium communities — Bukadra emerging vs Hartland proven",edge:"Highgrove is Ellington in emerging area. Hartland is proven."},
+"Arbor View":{yield:"8–10%",roi:"10–12% in 2 yrs",psf:"1,000–1,500",pp:"70/30",bestFor:["first-home","rental-income"],vs:"Samana Skyros",why:"Arjan towers — Ellington green vs Samana lagoon",edge:"Arbor has Ellington quality. Skyros has rooftop pools."},
+"Cove (Dubai Islands)":{yield:"6–8%",roi:"12–18% in 3 yrs",psf:"1,500–2,200",pp:"70/30",bestFor:["growing-area","holiday-home"],vs:"Samana Ocean Pearl",why:"Dubai Islands — Ellington lifestyle vs Samana resort",edge:"Cove has yacht club access. Ocean Pearl has coastal design."},
+"Danube Oceanz":{yield:"7–9%",roi:"10–15% in 3 yrs",psf:"1,400–2,000",pp:"1%/mo",bestFor:["rental-income","growing-area"],vs:"Chelsea Residences",why:"Maritime City — Danube value vs Chelsea brand",edge:"Oceanz has 1% plan. Chelsea has sports brand premium."},
+"Danube Bayz 102":{yield:"6–8%",roi:"10–12% in 3 yrs",psf:"1,400–2,000",pp:"1%/mo",bestFor:["rental-income","capital-appreciation"],vs:"Business Bay",why:"Specific Danube BB tower vs broader area",edge:"Bayz has 1% plan. BB established has immediate rental."},
+"Danube Diamondz":{yield:"7–9%",roi:"10–12% in 3 yrs",psf:"1,400–2,000",pp:"1%/mo",bestFor:["rental-income","growing-area"],vs:"JLT (Jumeirah Lakes Towers)",why:"New Danube JLT tower vs established JLT resale",edge:"Diamondz is new stock. JLT resale has immediate income."},
+"Danube Viewz (Aston Martin)":{yield:"7–9%",roi:"10–15% in 2 yrs",psf:"1,400–2,000",pp:"1%/mo",bestFor:["branded-prestige","rental-income"],vs:"JLT (Jumeirah Lakes Towers)",why:"JLT branded vs JLT resale — same views",edge:"Viewz has Aston Martin at mid-market. JLT has immediate rental."},
+"Danube Fashionz":{yield:"8–10%",roi:"10–12% in 2 yrs",psf:"1,000–1,500",pp:"1%/mo",bestFor:["first-home","rental-income"],vs:"Jumeirah Village Triangle",why:"JVT — FashionTV branded vs area stock",edge:"Fashionz has brand + 1% plan. JVT has established amenities."},
+"Danube Elitz 3":{yield:"8–10%",roi:"10–12% in 2 yrs",psf:"1,000–1,400",pp:"1%/mo",bestFor:["first-home","rental-income"],vs:"Jumeirah Village Circle (JVC)",why:"JVC D13 Danube vs broader market",edge:"Elitz has 1% monthly. JVC has 17,915 deals liquidity."},
+"Danube Petalz":{yield:"8–10%",roi:"8–10% in 2 yrs",psf:"700–1,000",pp:"1%/mo",bestFor:["first-home","rental-income"],vs:"International City",why:"Intl City — Danube tower vs cheapest area",edge:"Petalz has Danube quality at AED 450K. Intl City is lowest entry."},
+"Danube Skyz":{yield:"8–10%",roi:"8–12% in 2 yrs",psf:"800–1,200",pp:"1%/mo",bestFor:["first-home","rental-income"],vs:"Al Barsha South / Arjan",why:"Arjan's most affordable branded entry",edge:"Skyz at AED 399K. Area has 10,469 H1 deals."},
+"Danube Aspirz":{yield:"7–9%",roi:"10–12% in 3 yrs",psf:"1,000–1,400",pp:"1%/mo",bestFor:["rental-income","growing-area"],vs:"Dubai Sports City",why:"Sports City — Danube vs established area",edge:"Aspirz has 1% plan. Sports City has stadiums."},
+"One at Palm Jumeirah":{yield:"3–5%",roi:"8–12% in 2 yrs",psf:"5,000–10,000",pp:"Delivered",bestFor:["branded-prestige","holiday-home"],vs:"Palm Jumeirah",why:"Crown of Palm — Omniyat ultra vs general resale",edge:"One Palm is most exclusive address. Palm has wider choice."},
+"The Opus by Zaha Hadid":{yield:"5–7%",roi:"8–12% in 2 yrs",psf:"2,500–4,000",pp:"Delivered",bestFor:["branded-prestige","flip"],vs:"Business Bay",why:"Iconic BB tower vs broader stock",edge:"Opus has Zaha Hadid legacy. BB has more liquidity."},
+"AVANTI Tower":{yield:"5–7%",roi:"10–15% in 3 yrs",psf:"3,000–5,000",pp:"Various",bestFor:["branded-prestige","capital-appreciation"],vs:"DAMAC Safa One",why:"Ultra-luxury BB — Omniyat precision vs DAMAC branded",edge:"AVANTI has architectural DNA. Safa One has de Grisogono."},
+"The Lana Residences":{yield:"4–6%",roi:"8–12% in 2 yrs",psf:"4,000–7,000",pp:"Delivered",bestFor:["branded-prestige","holiday-home"],vs:"One Za'abeel",why:"Branded luxury — Dorchester vs One&Only",edge:"Lana has hotel services. Za'abeel has The Link landmark."},
+"Six Senses Residences The Palm":{yield:"4–6%",roi:"10–15% in 3 yrs",psf:"4,000–7,000",pp:"Various",bestFor:["holiday-home","branded-prestige"],vs:"Ocean House",why:"Palm wellness-branded vs design-led",edge:"Six Senses has global wellness brand. Ocean House has Ellington craft."},
+"Peninsula Business Bay":{yield:"6–8%",roi:"8–12% in 2 yrs",psf:"1,600–2,200",pp:"Delivered",bestFor:["rental-income","capital-appreciation"],vs:"Business Bay",why:"Select Group waterfront vs broader BB",edge:"Peninsula has waterfront position. BB has more options."},
+"Jumeirah Beach Residence (JBR)":{yield:"6–8%",roi:"8–12% in 2 yrs",psf:"1,800–2,800",pp:"Resale",bestFor:["rental-income","holiday-home"],vs:"Dubai Marina",why:"Adjacent beachfront vs marina",edge:"JBR has tourist foot traffic. Marina has more units."},
+"La Vie at JBR":{yield:"6–8%",roi:"10–12% in 3 yrs",psf:"2,200–3,200",pp:"Various",bestFor:["rental-income","holiday-home"],vs:"Jumeirah Beach Residence (JBR)",why:"New tower vs JBR resale — same area",edge:"La Vie is premium new build. JBR has proven history."},
+"Ciel Tower":{yield:"5–7%",roi:"8–12% in 2 yrs",psf:"2,000–3,000",pp:"Various",bestFor:["holiday-home","branded-prestige"],vs:"Dubai Marina",why:"World's tallest hotel in Marina vs general stock",edge:"Ciel has record height + hotel. Marina has wider choice."},
+"Baccarat Hotel":{yield:"4–6%",roi:"8–12% in 3 yrs",psf:"3,500–5,500",pp:"Various",bestFor:["branded-prestige","holiday-home"],vs:"Downtown Dubai / Burj Khalifa",why:"Crystal luxury in Downtown vs general stock",edge:"Baccarat has French luxury brand. Downtown has proven demand."},
+"One Za'abeel":{yield:"4–6%",roi:"8–12% in 2 yrs",psf:"4,000–7,000",pp:"Delivered",bestFor:["branded-prestige","flip"],vs:"Cavalli Couture",why:"Ultra-luxury icons — architectural vs fashion",edge:"Za'abeel has The Link. Cavalli is fashion-luxury."},
+"Nakheel District One West":{yield:"5–7%",roi:"12–18% in 3 yrs",psf:"2,000–3,500",pp:"Various",bestFor:["family-home","capital-appreciation"],vs:"MBR City / Meydan",why:"MBR premium villas — Nakheel vs broader area",edge:"District One has lagoon access. MBR has project diversity."},
+"Nad Al Sheba Gardens":{yield:"6–8%",roi:"12–18% in 4 yrs",psf:"1,200–2,000",pp:"Various",bestFor:["family-home","growing-area"],vs:"The Valley",why:"Family communities — Meraas suburban vs Emaar suburban",edge:"Nad Al Sheba has central location. Valley has Emaar plan."},
+"The Acres":{yield:"6–8%",roi:"12–18% in 4 yrs",psf:"1,200–2,000",pp:"Various",bestFor:["family-home","growing-area"],vs:"DAMAC Lagoons",why:"Dubailand family — Meraas nature vs DAMAC themed",edge:"Acres has outdoor-centric design. Lagoons has Mediterranean themes."},
+"City Walk Residences":{yield:"5–7%",roi:"8–12% in 2 yrs",psf:"2,500–4,000",pp:"Resale",bestFor:["rental-income","holiday-home"],vs:"Downtown Dubai / Burj Khalifa",why:"Lifestyle addresses — boutique vs iconic",edge:"City Walk has retail integration. Downtown has Burj traffic."},
+"Bluewaters Island":{yield:"5–7%",roi:"8–12% in 2 yrs",psf:"2,000–3,500",pp:"Resale",bestFor:["holiday-home","rental-income"],vs:"Emaar Beachfront",why:"Man-made islands — Ain Dubai vs Address services",edge:"Bluewaters has Ain Dubai. Beachfront is newer and gated."},
+"Jumeira Bay":{yield:"4–6%",roi:"10–15% in 3 yrs",psf:"3,500–6,000",pp:"Various",bestFor:["branded-prestige","capital-appreciation"],vs:"City Walk Residences",why:"Meraas ultra-premium — island vs urban",edge:"Jumeira Bay is exclusive island. City Walk has walkable edge."},
+"Business Bay":{yield:"6–8%",roi:"8–12% in 2 yrs",psf:"1,400–2,200",pp:"Various",bestFor:["rental-income","flip"],vs:"Dubai Marina",why:"Two highest-volume investment zones",edge:"BB has more new supply. Marina has steadier demand."},
+"Dubai Marina":{yield:"6–8%",roi:"8–12% in 2 yrs",psf:"1,600–2,500",pp:"Resale",bestFor:["rental-income","holiday-home"],vs:"Business Bay",why:"Eternal investor debate — waterfront vs business",edge:"Marina has walk + beach. BB has newer stock."},
+"Jumeirah Village Circle (JVC)":{yield:"8–10%",roi:"10–15% in 2 yrs",psf:"900–1,400",pp:"Various",bestFor:["rental-income","first-home"],vs:"Al Barsha South / Arjan",why:"Two highest-volume affordable zones",edge:"JVC has 17,915 deals. Arjan has faster appreciation."},
+"Palm Jumeirah":{yield:"4–6%",roi:"8–12% in 2 yrs",psf:"2,500–5,000",pp:"Resale",bestFor:["holiday-home","branded-prestige"],vs:"Emaar Beachfront",why:"Iconic palm vs modern beachfront island",edge:"Palm is global icon. Beachfront is newer and gated."},
+"Al Barsha South / Arjan":{yield:"8–10%",roi:"10–15% in 2 yrs",psf:"900–1,400",pp:"Various",bestFor:["rental-income","first-home"],vs:"Jumeirah Village Circle (JVC)",why:"Fastest growing vs highest volume affordable",edge:"Arjan has newer stock. JVC has more exits."},
+"DIFC":{yield:"5–7%",roi:"8–12% in 2 yrs",psf:"2,500–4,500",pp:"Resale",bestFor:["flip","rental-income"],vs:"Downtown Dubai / Burj Khalifa",why:"Premium addresses — finance vs lifestyle",edge:"DIFC has corporate tenants. Downtown has tourism."},
+"Dubai Islands (Deira)":{yield:"7–9%",roi:"15–22% in 4 yrs",psf:"1,000–1,600",pp:"Various",bestFor:["growing-area","capital-appreciation"],vs:"Expo City Dubai",why:"Emerging mega-zones on opposite sides of Dubai",edge:"Islands is coastal Nakheel. Expo has established base."},
+"Dubai Airport City":{yield:"6–8%",roi:"10–15% in 3 yrs",psf:"1,200–1,800",pp:"Various",bestFor:["rental-income","growing-area"],vs:"Business Bay",why:"Commercial corridors — logistics vs urban",edge:"Airport City has logistics demand. BB has broader mix."},
+"JLT (Jumeirah Lakes Towers)":{yield:"6–8%",roi:"8–10% in 2 yrs",psf:"1,200–1,800",pp:"Resale",bestFor:["rental-income","first-home"],vs:"Dubai Marina",why:"Adjacent — JLT value vs Marina premium",edge:"JLT is 20–30% cheaper/sqft. Marina has beach."},
+"Meydan One District":{yield:"6–8%",roi:"12–18% in 4 yrs",psf:"1,500–2,500",pp:"Various",bestFor:["growing-area","capital-appreciation"],vs:"MBR City / Meydan",why:"Entertainment mega within MBR",edge:"Meydan One has mall + ski slope. MBR is broader play."},
+"Dubai Sports City":{yield:"7–9%",roi:"10–12% in 2 yrs",psf:"800–1,300",pp:"Various",bestFor:["rental-income","family-home"],vs:"Motor City",why:"Adjacent themed communities",edge:"Sports City has stadiums. Motor City has Autodrome."},
+"Dubai Silicon Oasis":{yield:"7–9%",roi:"8–12% in 2 yrs",psf:"800–1,300",pp:"Various",bestFor:["rental-income","first-home"],vs:"Dubai Studio City",why:"Tech hub vs media hub — similar price",edge:"DSO has tech tenants. Studio City has creative mix."},
+"Discovery Gardens":{yield:"8–10%",roi:"8–10% in 2 yrs",psf:"600–900",pp:"Resale",bestFor:["first-home","rental-income"],vs:"International City",why:"Dubai's two most affordable areas",edge:"DG has metro. Intl City has lowest entry."},
+"International City":{yield:"8–10%",roi:"8–10% in 2 yrs",psf:"500–800",pp:"Resale",bestFor:["first-home","rental-income"],vs:"Discovery Gardens",why:"Lowest entry points in Dubai",edge:"Intl City from AED 250K. DG has better connectivity."},
+"Jumeirah Village Triangle":{yield:"8–10%",roi:"10–12% in 2 yrs",psf:"900–1,400",pp:"Various",bestFor:["rental-income","first-home"],vs:"Jumeirah Village Circle (JVC)",why:"Sister communities — JVT value vs JVC liquidity",edge:"JVT is cheaper. JVC has far more volume."},
+"Dubai Production City":{yield:"7–9%",roi:"10–12% in 2 yrs",psf:"800–1,200",pp:"Various",bestFor:["rental-income","first-home"],vs:"Dubai Studio City",why:"Adjacent media/production hubs",edge:"Production City is cheaper. Studio City has better lifestyle."},
+"Al Furjan":{yield:"7–9%",roi:"10–12% in 2 yrs",psf:"1,000–1,500",pp:"Various",bestFor:["family-home","rental-income"],vs:"Discovery Gardens",why:"Metro-connected family zones",edge:"Al Furjan is newer + metro. DG is cheaper."},
+"Motor City":{yield:"7–9%",roi:"8–12% in 2 yrs",psf:"900–1,400",pp:"Resale",bestFor:["family-home","rental-income"],vs:"Dubai Sports City",why:"Adjacent themed communities",edge:"Motor City has Autodrome. Sports City has population growth."},
+"Dubai Studio City":{yield:"7–9%",roi:"10–12% in 2 yrs",psf:"800–1,200",pp:"Various",bestFor:["rental-income","first-home"],vs:"Dubai Production City",why:"Adjacent media hubs — lifestyle vs value",edge:"Studio City has amenities. Production City is cheaper."},
+"Majan / Dubailand":{yield:"7–9%",roi:"12–18% in 4 yrs",psf:"700–1,100",pp:"Various",bestFor:["growing-area","first-home"],vs:"Dubai Studio City",why:"Emerging Dubailand zones",edge:"Majan has long-term growth. Studio City is established."},
+"Al Jaddaf":{yield:"6–8%",roi:"10–15% in 3 yrs",psf:"1,300–2,000",pp:"Various",bestFor:["capital-appreciation","growing-area"],vs:"Dubai Creek Harbour",why:"Creek-adjacent regeneration vs mega waterfront",edge:"Jaddaf has multiple developers. Creek is Emaar-only."},
+"Wadi Al Safa 5":{yield:"7–9%",roi:"10–15% in 2 yrs",psf:"900–1,500",pp:"Various",bestFor:["rental-income","growing-area"],vs:"Dubai Hills Estate",why:"Adjacent zones — emerging vs established",edge:"Wadi has AED 15.3B H1 transactions. Hills has community infra."},
+"Dubai Residence Complex":{yield:"8–10%",roi:"10–12% in 2 yrs",psf:"700–1,100",pp:"Various",bestFor:["first-home","rental-income"],vs:"Jumeirah Village Circle (JVC)",why:"Affordable hubs — DLRC value vs JVC liquidity",edge:"DLRC is cheaper. JVC has far more tenant demand."},
+"Dubai Investment Park":{yield:"7–9%",roi:"10–15% in 3 yrs",psf:"600–1,000",pp:"Various",bestFor:["growing-area","rental-income"],vs:"Jebel Ali First",why:"Industrial-adjacent residential zones",edge:"DIP has DAMAC Riverside. Jebel Ali has logistics."},
+"Jebel Ali First":{yield:"7–9%",roi:"10–12% in 2 yrs",psf:"600–1,000",pp:"Various",bestFor:["rental-income","growing-area"],vs:"Dubai Investment Park",why:"Industrial growth corridor",edge:"Jebel Ali has port proximity. DIP has more residential."},
+};
+// LISTING GENERATOR: Expand seed projects → 1000+ unit-level pins
+// Each project spawns 3-12 individual listings based on unit types
+// Uses real PSF data to generate accurate unit prices
+// ══════════════════════════════════════════════
+const unitTemplates={
+  "Studio":{minSqft:300,maxSqft:500},
+  "1BR":{minSqft:550,maxSqft:850},
+  "2BR":{minSqft:900,maxSqft:1400},
+  "3BR":{minSqft:1300,maxSqft:2200},
+  "4BR":{minSqft:2000,maxSqft:3500},
+  "5BR Villa":{minSqft:3500,maxSqft:6000},
+  "Penthouse":{minSqft:2500,maxSqft:5500},
+  "3BR TH":{minSqft:1800,maxSqft:2800},
+  "4BR TH":{minSqft:2400,maxSqft:3500},
+};
+
+// Determine which unit types each project offers based on category
+const catUnits={
+  mega:["Studio","1BR","2BR","3BR","4BR","Penthouse"],
+  luxury:["1BR","2BR","3BR","4BR","Penthouse"],
+  mid:["Studio","1BR","2BR","3BR"],
+  affordable:["Studio","1BR","2BR"],
+  commercial:["Studio","1BR","2BR","3BR"],
+  branded:["2BR","3BR","4BR","Penthouse"],
+};
+
+// Seeded random for deterministic results
+function seededRand(seed){let s=seed;return()=>{s=(s*16807)%2147483647;return(s-1)/2147483646}}
+
+const generatedListings=[];
+P.forEach((proj,idx)=>{
+  const mi=MI[proj.n];
+  if(!mi||!mi.psf)return;
+  const psfParts=mi.psf.split('–').map(v=>parseInt(v.replace(/,/g,'')));
+  if(psfParts.length<2||isNaN(psfParts[0]))return;
+  const minPsf=psfParts[0],maxPsf=psfParts[1];
+  const units=catUnits[proj.c]||["Studio","1BR","2BR"];
+  const rng=seededRand(idx*137+42);
+
+  units.forEach((unitType,ui)=>{
+    const tmpl=unitTemplates[unitType];
+    if(!tmpl)return;
+    // Generate 1-3 units per type per project
+    const count=proj.c==='branded'?2:Math.min(3,Math.ceil(rng()*2.5));
+    for(let i=0;i<count;i++){
+      const sqft=Math.round(tmpl.minSqft+(tmpl.maxSqft-tmpl.minSqft)*rng());
+      const psf=Math.round(minPsf+(maxPsf-minPsf)*rng());
+      const price=sqft*psf;
+      // Offset lat/lng slightly so pins don't stack
+      const latOff=(rng()-.5)*.004;
+      const lngOff=(rng()-.5)*.004;
+      generatedListings.push({
+        n:`${unitType} in ${proj.n}`,
+        d:proj.d,
+        lat:proj.lat+latOff,
+        lng:proj.lng+lngOff,
+        c:proj.c,
+        s:proj.s,
+        u:`${sqft} sqft`,
+        p:`AED ${(price).toLocaleString()}`,
+        e:proj.e,
+        t:unitType,
+        desc:`${unitType} · ${sqft} sqft · AED ${psf}/sqft · ${proj.d} · ${mi.pp||'TBA'} plan`,
+        _parent:proj.n,
+        _sqft:sqft,
+        _psf:psf,
+        _price:price,
+      });
+    }
+  });
+});
+
+// Merge generated listings into P
+generatedListings.forEach(l=>P.push(l));
+
+// ══════════════════════════════════════════════
+// CURATED COMPARISON SYSTEM
+// Each project has exactly 1 hand-picked rival
+// ══════════════════════════════════════════════
+function getMatch(projectName){
+  const mi=MI[projectName];
+  if(!mi||!mi.vs)return null;
+  const matchProject=P.find(x=>x.n===mi.vs);
+  if(!matchProject)return null;
+  const matchMI=MI[mi.vs]||{};
+  // Determine the 3 match criteria from the intent overlap
+  const srcIntents=mi.bestFor||[];
+  const tgtIntents=matchMI.bestFor||[];
+  const shared=srcIntents.filter(i=>tgtIntents.includes(i));
+  const reasons=[];
+  if(shared.length>0)reasons.push(intentLabel(shared[0]));
+  // Always show price and location as matching criteria
+  reasons.push("Price Range");
+  reasons.push("Location Type");
+  return{project:matchProject,mi:matchMI,reasons:reasons.slice(0,3),why:mi.why,edge:mi.edge};
+}
+
+function intentLabel(i){
+  const map={"capital-appreciation":"Capital Growth","rental-income":"Rental Yield","family-home":"Family Living","growing-area":"Emerging Area","branded-prestige":"Brand Premium","flip":"Quick Flip","first-home":"First Home","retirement":"Retirement","holiday-home":"Holiday Home"};
+  return map[i]||i;
+}
+
+function intentIcon(i){
+  const icons={"capital-appreciation":"📈","rental-income":"💰","family-home":"🏡","growing-area":"🌱","branded-prestige":"✨","flip":"⚡","first-home":"🔑","retirement":"🌅","holiday-home":"🏖️"};
+  return icons[i]||"•";
+}
+
+// ══════════════════════════════════════════════
+// ══════════════════════════════════════════════
+// ENHANCED POPUP BUILDER (with inline comparison)
+// ══════════════════════════════════════════════
+const listings={
+"Dubai Creek Harbour":[
+  {type:"1BR Apt",size:"750 sqft",price:"AED 1,280,000",src:"Bayut"},
+  {type:"2BR Apt",size:"1,100 sqft",price:"AED 2,150,000",src:"Bayut"},
+  {type:"3BR Apt",size:"1,650 sqft",price:"AED 3,400,000",src:"PropertyFinder"},
+  {type:"3BR TH",size:"1,843 sqft",price:"AED 4,200,000",src:"Emaar Direct"},
+],
+"Business Bay":[
+  {type:"Studio",size:"380 sqft",price:"AED 720,000",src:"Bayut"},
+  {type:"1BR Apt",size:"650 sqft",price:"AED 1,050,000",src:"Dubizzle"},
+  {type:"2BR Apt",size:"1,050 sqft",price:"AED 1,800,000",src:"PropertyFinder"},
+  {type:"3BR Apt",size:"1,600 sqft",price:"AED 3,200,000",src:"fäm"},
+],
+"Dubai Marina":[
+  {type:"Studio",size:"420 sqft",price:"AED 850,000",src:"Bayut"},
+  {type:"1BR Apt",size:"780 sqft",price:"AED 1,350,000",src:"Dubizzle"},
+  {type:"2BR Apt",size:"1,200 sqft",price:"AED 2,400,000",src:"PropertyFinder"},
+],
+"Jumeirah Village Circle (JVC)":[
+  {type:"Studio",size:"350 sqft",price:"AED 380,000",src:"Bayut"},
+  {type:"1BR Apt",size:"600 sqft",price:"AED 650,000",src:"Dubizzle"},
+  {type:"2BR Apt",size:"900 sqft",price:"AED 1,100,000",src:"PropertyFinder"},
+],
+"Palm Jumeirah":[
+  {type:"1BR Apt",size:"900 sqft",price:"AED 3,200,000",src:"Bayut"},
+  {type:"2BR Apt",size:"1,500 sqft",price:"AED 5,800,000",src:"PropertyFinder"},
+  {type:"4BR Villa",size:"5,200 sqft",price:"AED 28,000,000",src:"fäm"},
+],
+"Burj Binghatti Jacob & Co":[
+  {type:"2BR Sapphire",size:"1,400 sqft",price:"AED 8,200,000",src:"Binghatti"},
+  {type:"3BR Emerald",size:"2,100 sqft",price:"AED 15,500,000",src:"Binghatti"},
+],
+"Bugatti Residences":[
+  {type:"2BR Riviera",size:"1,800 sqft",price:"AED 19,100,000",src:"Binghatti"},
+  {type:"Penthouse",size:"5,500 sqft",price:"AED 75,000,000+",src:"Binghatti"},
+],
+"DAMAC Lagoons":[
+  {type:"3BR TH Morocco",size:"2,073 sqft",price:"AED 1,500,000",src:"Bayut"},
+  {type:"4BR TH",size:"2,800 sqft",price:"AED 2,950,000",src:"DAMAC"},
+  {type:"5BR Villa",size:"3,500 sqft",price:"AED 4,200,000",src:"PropertyFinder"},
+],
+"Azizi Riviera":[
+  {type:"Studio",size:"380 sqft",price:"AED 620,000",src:"Bayut"},
+  {type:"1BR Apt",size:"650 sqft",price:"AED 950,000",src:"Azizi"},
+  {type:"2BR Apt",size:"1,000 sqft",price:"AED 1,450,000",src:"PropertyFinder"},
+],
+"Sobha Hartland":[
+  {type:"1BR Apt",size:"700 sqft",price:"AED 1,800,000",src:"Bayut"},
+  {type:"2BR Apt",size:"1,100 sqft",price:"AED 2,800,000",src:"Sobha"},
+  {type:"3BR Villa",size:"3,400 sqft",price:"AED 8,500,000",src:"PropertyFinder"},
+],
+"Al Barsha South / Arjan":[
+  {type:"Studio",size:"350 sqft",price:"AED 420,000",src:"Bayut"},
+  {type:"1BR Apt",size:"600 sqft",price:"AED 750,000",src:"Dubizzle"},
+  {type:"2BR Apt",size:"900 sqft",price:"AED 1,200,000",src:"PropertyFinder"},
+],
+"Dubai Hills Estate":[
+  {type:"1BR Apt",size:"650 sqft",price:"AED 1,050,000",src:"Bayut"},
+  {type:"2BR Apt",size:"1,000 sqft",price:"AED 1,800,000",src:"PropertyFinder"},
+  {type:"4BR Villa",size:"4,500 sqft",price:"AED 8,200,000",src:"Emaar"},
+],
+"Emaar Beachfront":[
+  {type:"1BR Apt",size:"750 sqft",price:"AED 1,350,000",src:"Bayut"},
+  {type:"2BR Apt",size:"1,200 sqft",price:"AED 2,500,000",src:"Emaar"},
+],
+"Samana Waves":[
+  {type:"Studio + Pool",size:"380 sqft",price:"AED 680,000",src:"Samana"},
+  {type:"1BR + Pool",size:"650 sqft",price:"AED 1,050,000",src:"Bayut"},
+],
+"Binghatti Aurora":[
+  {type:"Studio",size:"340 sqft",price:"AED 667,000",src:"Binghatti"},
+  {type:"1BR Apt",size:"580 sqft",price:"AED 890,000",src:"Bayut"},
+  {type:"2BR Apt",size:"950 sqft",price:"AED 1,350,000",src:"Binghatti"},
+],
+"Danube Oceanz":[
+  {type:"Studio",size:"400 sqft",price:"AED 1,100,000",src:"Danube"},
+  {type:"1BR Apt",size:"700 sqft",price:"AED 1,600,000",src:"Bayut"},
+  {type:"2BR Apt",size:"1,050 sqft",price:"AED 2,200,000",src:"Danube"},
+],
+"Emaar The Oasis":[
+  {type:"4BR Villa",size:"6,500 sqft",price:"AED 12,000,000",src:"Emaar"},
+  {type:"5BR Mansion",size:"10,000 sqft",price:"AED 25,000,000",src:"Emaar"},
+  {type:"6BR Estate",size:"18,000 sqft",price:"AED 85,000,000+",src:"Emaar"},
+],
+"DAMAC Hills":[
+  {type:"1BR Apt",size:"700 sqft",price:"AED 1,200,000",src:"Bayut"},
+  {type:"3BR TH",size:"2,200 sqft",price:"AED 2,800,000",src:"PropertyFinder"},
+  {type:"5BR Villa",size:"5,000 sqft",price:"AED 6,200,000",src:"DAMAC"},
+],
+"Danube Skyz":[
+  {type:"Studio",size:"320 sqft",price:"AED 399,000",src:"Danube"},
+  {type:"1BR Apt",size:"550 sqft",price:"AED 620,000",src:"Bayut"},
+],
+"DIFC":[
+  {type:"1BR Apt",size:"800 sqft",price:"AED 2,100,000",src:"Bayut"},
+  {type:"2BR Apt",size:"1,300 sqft",price:"AED 4,500,000",src:"PropertyFinder"},
+  {type:"Office 900sqft",size:"900 sqft",price:"AED 3,200,000",src:"Dubizzle"},
+],
+"One Za'abeel":[
+  {type:"2BR Apt",size:"1,600 sqft",price:"AED 7,500,000",src:"Bayut"},
+  {type:"3BR Apt",size:"2,400 sqft",price:"AED 15,000,000",src:"PropertyFinder"},
+  {type:"Penthouse",size:"8,000 sqft",price:"AED 55,000,000",src:"Ithra"},
+],
+"Burj Azizi":[
+  {type:"2BR Apt",size:"1,200 sqft",price:"AED 7,500,000",src:"Azizi"},
+  {type:"3BR Apt",size:"1,800 sqft",price:"AED 12,000,000",src:"Azizi"},
+],
+};
+
+// Image URLs for project renders (from developer/portal CDN patterns)
+const imgs={
+"Dubai Creek Harbour":"https://images.bayut.com/thumbnails/296429614-800x600.webp",
+"Business Bay":"https://images.bayut.com/thumbnails/244009028-800x600.webp",
+"Dubai Marina":"https://images.bayut.com/thumbnails/280476594-800x600.webp",
+"Palm Jumeirah":"https://images.bayut.com/thumbnails/285998718-800x600.webp",
+"Jumeirah Village Circle (JVC)":"https://images.bayut.com/thumbnails/244040630-800x600.webp",
+"Dubai Hills Estate":"https://images.bayut.com/thumbnails/282741382-800x600.webp",
+"Emaar Beachfront":"https://images.bayut.com/thumbnails/287752710-800x600.webp",
+"DAMAC Lagoons":"https://images.bayut.com/thumbnails/277780858-800x600.webp",
+"Sobha Hartland":"https://images.bayut.com/thumbnails/285419778-800x600.webp",
+"Azizi Riviera":"https://images.bayut.com/thumbnails/276009402-800x600.webp",
+"DAMAC Hills":"https://images.bayut.com/thumbnails/267861362-800x600.webp",
+"DAMAC Islands":"https://images.bayut.com/thumbnails/287753134-800x600.webp",
+"Expo City Dubai":"https://images.bayut.com/thumbnails/283529330-800x600.webp",
+"Dubai Islands (Deira)":"https://images.bayut.com/thumbnails/292625010-800x600.webp",
+"Palm Jebel Ali":"https://images.bayut.com/thumbnails/274361578-800x600.webp",
+"Downtown Dubai / Burj Khalifa":"https://images.bayut.com/thumbnails/245117210-800x600.webp",
+"Al Barsha South / Arjan":"https://images.bayut.com/thumbnails/269858586-800x600.webp",
+"Emaar The Oasis":"https://images.bayut.com/thumbnails/295370798-800x600.webp",
+};
+
+// Verified portal links
+const portalLinks={
+"Dubai Creek Harbour":"https://www.bayut.com/for-sale/apartments/dubai/dubai-creek-harbour/",
+"Business Bay":"https://www.bayut.com/for-sale/apartments/dubai/business-bay/",
+"Dubai Marina":"https://www.bayut.com/for-sale/apartments/dubai/dubai-marina/",
+"Palm Jumeirah":"https://www.bayut.com/for-sale/property/dubai/palm-jumeirah/",
+"Jumeirah Village Circle (JVC)":"https://www.bayut.com/for-sale/apartments/dubai/jumeirah-village-circle-jvc/",
+"Downtown Dubai / Burj Khalifa":"https://www.bayut.com/for-sale/apartments/dubai/downtown-dubai/",
+"Dubai Hills Estate":"https://www.bayut.com/for-sale/property/dubai/dubai-hills-estate/",
+"Emaar Beachfront":"https://www.bayut.com/for-sale/apartments/dubai/emaar-beachfront/",
+"DAMAC Lagoons":"https://www.bayut.com/for-sale/property/dubai/damac-lagoons/",
+"DAMAC Hills":"https://www.bayut.com/for-sale/property/dubai/damac-hills-akoya-by-damac/",
+"DAMAC Hills 2":"https://www.bayut.com/for-sale/property/dubai/dubailand/damac-hills-2-akoya-oxygen/",
+"Sobha Hartland":"https://www.bayut.com/for-sale/apartments/dubai/sobha-hartland/",
+"Dubai Islands (Deira)":"https://www.bayut.com/for-sale/apartments/dubai/dubai-islands/",
+"Al Barsha South / Arjan":"https://www.bayut.com/for-sale/apartments/dubai/arjan/",
+"JLT (Jumeirah Lakes Towers)":"https://www.bayut.com/for-sale/apartments/dubai/jumeirah-lake-towers-jlt/",
+"DIFC":"https://www.bayut.com/for-sale/property/dubai/difc/",
+"Dubai Sports City":"https://www.bayut.com/for-sale/apartments/dubai/dubai-sports-city/",
+"Dubai Silicon Oasis":"https://www.bayut.com/for-sale/apartments/dubai/dubai-silicon-oasis/",
+"International City":"https://www.bayut.com/for-sale/apartments/dubai/international-city/",
+"Al Furjan":"https://www.bayut.com/for-sale/apartments/dubai/al-furjan/",
+"Discovery Gardens":"https://www.bayut.com/for-sale/apartments/dubai/discovery-gardens/",
+"Dubai Production City":"https://www.bayut.com/for-sale/apartments/dubai/impz-dubai-production-city/",
+"Jumeirah Village Triangle":"https://www.bayut.com/for-sale/apartments/dubai/jumeirah-village-triangle-jvt/",
+"Dubai Studio City":"https://www.bayut.com/for-sale/apartments/dubai/dubai-studio-city/",
+"Motor City":"https://www.bayut.com/for-sale/apartments/dubai/motor-city/",
+"Dubai Investment Park":"https://www.bayut.com/for-sale/property/dubai/dubai-investment-park-dip/",
+"Azizi Riviera":"https://www.bayut.com/for-sale/apartments/dubai/meydan-city/azizi-riviera/",
+"MBR City / Meydan":"https://www.bayut.com/for-sale/property/dubai/mohammed-bin-rashid-gardens/",
+"Jumeirah Beach Residence (JBR)":"https://www.bayut.com/for-sale/apartments/dubai/jumeirah-beach-residence-jbr/",
+"City Walk Residences":"https://www.bayut.com/for-sale/apartments/dubai/city-walk/",
+"Bluewaters Island":"https://www.bayut.com/for-sale/apartments/dubai/bluewaters-island/",
+};
+
+// Brochure / developer links
+const brochures={
+"Emaar":"https://www.emaar.com/en/projects",
+"DAMAC":"https://www.damacproperties.com/en/projects",
+"Binghatti":"https://www.binghatti.com/en/projects",
+"Sobha Realty":"https://www.sobharealty.com/projects/",
+"Azizi":"https://www.azizidevelopments.com/projects",
+"Samana":"https://www.samanadevelopers.com/projects",
+"Ellington":"https://ellingtonproperties.ae/projects/",
+"Danube":"https://danubeproperties.com/",
+"Nakheel":"https://www.nakheel.com/communities",
+"Meraas":"https://www.meraas.com/en/communities",
+"Omniyat":"https://omniyat.com/",
+"Select Group":"https://www.select-group.ae/projects",
+"Meydan Group":"https://www.meydan.ae/",
+"Dubai Properties":"https://www.dubaiproperties.ae/",
+"DAMAC × Cavalli":"https://www.damacproperties.com/en/projects",
+"DAMAC × Chelsea FC":"https://www.damacproperties.com/en/projects",
+"DAMAC × de Grisogono":"https://www.damacproperties.com/en/projects",
+"DAMAC × Versace":"https://www.damacproperties.com/en/projects",
+"DAMAC × Fendi Casa":"https://www.damacproperties.com/en/projects",
+"DAMAC × Paramount":"https://www.damacproperties.com/en/projects",
+"DAMAC × Bugatti":"https://www.damacproperties.com/en/projects",
+"Binghatti × Bugatti":"https://www.binghatti.com/en/projects",
+"Binghatti × Jacob & Co":"https://www.binghatti.com/en/projects",
+"Binghatti × Mercedes-Benz":"https://www.binghatti.com/en/projects",
+"Danube × Aston Martin":"https://danubeproperties.com/",
+"Danube × FashionTV":"https://danubeproperties.com/",
+"Arada × Armani/Casa":"https://www.arada.com/projects",
+"Aldar × Aman":"https://www.aldar.com/en/explore-aldar/businesses/development",
+"Meraas × Bulgari":"https://www.meraas.com/en/communities",
+"Meraas × Jumeirah":"https://www.meraas.com/en/communities",
+"Omniyat × Dorchester":"https://omniyat.com/",
+"Select Group × Six Senses":"https://www.select-group.ae/projects",
+"H&H × Baccarat":"https://www.hhdev.ae/",
+"DarGlobal × Trump Org":"https://www.dfrproperties.ae/",
+"Khamas Group × Ritz-Carlton":"https://www.ritzcarltonresidences.com/dubai/",
+"Emaar × Address Hotels":"https://www.emaar.com/en/projects",
+"Emaar × Vida Hotels":"https://www.emaar.com/en/projects",
+"Emaar × Meraas":"https://www.emaar.com/en/projects",
+"Mira × Bentley":"https://www.mira.ae/",
+"Mira × Trussardi":"https://www.mira.ae/",
+"Kerzner × Atlantis":"https://www.atlantis.com/atlantis-the-royal/residences",
+"Ithra Dubai":"https://www.ithradubai.com/",
+};
+
+P.forEach(p=>{
+  const color=catColors[p.c]||'#3b82f6';
+  const sz=p._parent?12:catSizes[p.c]||16; // Generated pins are smaller
+  const icon=L.divIcon({
+    className:'',
+    html:`<div class="custom-marker" style="width:${sz}px;height:${sz}px;background:${color}22;border-color:${color}"><div style="width:${sz*.38}px;height:${sz*.38}px;border-radius:50%;background:${color}"></div></div>`,
+    iconSize:[sz,sz],iconAnchor:[sz/2,sz/2]
+  });
+
+  // For generated listings, look up parent project's data
+  const parentName=p._parent||p.n;
+  const mi=MI[parentName];
+  const imgUrl=imgs[parentName];
+  const pListings=listings[parentName];
+  const isGenerated=!!p._parent;
+
+  let popup='';
+
+  if(isGenerated){
+    // Compact card for generated unit listing — but with full MI data from parent
+    popup+=`<div class="popup-title">${p.n}</div>`;
+    popup+=`<div class="popup-dev">${p.d} · <span class="popup-tag ${tagClasses[p.c]}">${p.t}</span></div>`;
+    popup+=`<div class="popup-row"><span class="k">Size</span><span class="v">${p.u}</span></div>`;
+    popup+=`<div class="popup-row"><span class="k">Price</span><span class="v">${p.p}</span></div>`;
+    popup+=`<div class="popup-row"><span class="k">AED/sqft</span><span class="v">${p._psf?.toLocaleString()||'—'}</span></div>`;
+    popup+=`<div class="popup-row"><span class="k">Status</span><span class="v">${p.s}</span></div>`;
+    popup+=`<div class="popup-row"><span class="k">Handover</span><span class="v">${p.e||'—'}</span></div>`;
+    if(mi){
+      popup+=`<div class="popup-row"><span class="k">Payment</span><span class="v">${mi.pp||'—'}</span></div>`;
+      popup+=`<div style="margin-top:5px;display:flex;gap:3px;flex-wrap:wrap">`;
+      if(mi.bestFor)mi.bestFor.forEach(b=>{popup+=`<span class="intent-tag">${intentIcon(b)} ${intentLabel(b)}</span>`});
+      popup+=`</div>`;
+      popup+=`<div style="margin-top:3px;display:flex;gap:4px;flex-wrap:wrap">`;
+      popup+=`<span class="yield-tag">▲${mi.yield} yield</span>`;
+      popup+=`<span class="roi-tag">📈${mi.roi}</span>`;
+      popup+=`</div>`;
+    }
+  } else {
+    // Full card for seed projects
+    popup+=`${imgUrl?`<img class="popup-img" src="${imgUrl}" alt="${p.n}" onerror="this.style.display='none'">`:''}`;
+    popup+=`<div class="popup-title">${p.n}</div>`;
+    popup+=`<div class="popup-dev">${p.d} · <span class="popup-tag ${tagClasses[p.c]}">${p.t||p.c}</span></div>`;
+    popup+=`<div class="popup-row"><span class="k">Status</span><span class="v">${p.s}</span></div>`;
+    if(p.u)popup+=`<div class="popup-row"><span class="k">Scale</span><span class="v">${p.u}</span></div>`;
+    popup+=`<div class="popup-row"><span class="k">Price Range</span><span class="v">${p.p}</span></div>`;
+    if(p.e)popup+=`<div class="popup-row"><span class="k">Timeline</span><span class="v">${p.e}</span></div>`;
+    popup+=`<div style="margin-top:5px;font-size:10px;color:var(--t2);line-height:1.3">${p.desc}</div>`;
+    if(pListings&&pListings.length){
+      popup+=`<div class="popup-listings"><h5>Exact Listings</h5>`;
+      pListings.forEach(l=>{popup+=`<div class="listing-row"><span class="lt">${l.type} <span class="ls">${l.size}</span></span><span class="lp">${l.price}</span></div>`});
+      popup+=`</div>`;
+    }
+  }
+
+  // Links section — styled as button row, same for both generated and seed
+  const link=portalLinks[parentName];
+  const brochure=brochures[p.d]||brochures[p.d.split('×')[0].trim()]||brochures[p.d.split('×')[1]?.trim()]||null;
+  // Project-specific brochure overrides
+  const projectBrochures={
+"Bugatti Residences by Binghatti":"https://www.binghatti.com/en/projects/bugatti-residences",
+"Burj Binghatti Jacob & Co":"https://www.binghatti.com/en/projects/burj-binghatti",
+"Mercedes-Benz Places Downtown":"https://www.binghatti.com/en/projects/mercedes-benz-places",
+"Mercedes-Benz Binghatti City":"https://www.binghatti.com/en/projects/mercedes-benz-places-binghatti-city",
+"Chelsea Residences Maritime":"https://www.damacproperties.com/en/chelsea-residences",
+"Cavalli Tower":"https://www.damacproperties.com/en/cavalli-tower",
+"DAMAC Bay by Cavalli":"https://www.damacproperties.com/en/damac-bay",
+"DAMAC Safa One de Grisogono":"https://www.damacproperties.com/en/safa-one",
+"DAMAC Lagoons":"https://www.damacproperties.com/en/damac-lagoons",
+"DAMAC Islands":"https://www.damacproperties.com/en/damac-islands",
+"Danube Viewz × Aston Martin":"https://danubeproperties.com/viewz/",
+"Danube Fashionz × FashionTV":"https://danubeproperties.com/fashionz/",
+"Armani Beach Residences":"https://www.arada.com/projects/armani-beach-residences",
+"Bulgari Lighthouse":"https://www.meraas.com/en/communities/bulgari-lighthouse",
+"Six Senses The Palm":"https://www.select-group.ae/projects/six-senses-residences",
+"Atlantis The Royal Residences":"https://www.atlantis.com/atlantis-the-royal/residences",
+"Ritz-Carlton Residences BB":"https://www.ritzcarltonresidences.com/dubai/",
+"Dubai Creek Harbour":"https://www.emaar.com/en/what-we-do/communities/dubai/dubai-creek-harbour",
+"Dubai Hills Estate":"https://www.emaar.com/en/what-we-do/communities/dubai/dubai-hills-estate",
+"Emaar The Oasis":"https://www.emaar.com/en/what-we-do/communities/dubai/the-oasis",
+"Emaar Beachfront":"https://www.emaar.com/en/what-we-do/communities/dubai/emaar-beachfront",
+"The Valley":"https://www.emaar.com/en/what-we-do/communities/dubai/the-valley",
+"Sobha Hartland":"https://www.sobharealty.com/projects/sobha-hartland/",
+"Sobha Hartland II":"https://www.sobharealty.com/projects/sobha-hartland-ii/",
+"Azizi Riviera":"https://www.azizidevelopments.com/projects/riviera",
+"Samana Waves":"https://www.samanadevelopers.com/projects",
+"Palm Jebel Ali":"https://www.nakheel.com/communities/palm-jebel-ali",
+  };
+  const specificBrochure=projectBrochures[p.n]||projectBrochures[parentName];
+
+  if(link||specificBrochure||brochure){
+    popup+=`<div style="margin-top:6px;display:flex;gap:4px;flex-wrap:wrap">`;
+    if(link)popup+=`<a href="${link}" target="_blank" rel="noopener" style="padding:4px 10px;background:rgba(0,229,160,.08);border:1px solid rgba(0,229,160,.18);border-radius:5px;font-size:9px;font-weight:600;color:var(--accent);text-decoration:none;transition:all .2s">View on Bayut →</a>`;
+    if(specificBrochure||brochure)popup+=`<a href="${specificBrochure||brochure}" target="_blank" rel="noopener" style="padding:4px 10px;background:rgba(59,130,246,.08);border:1px solid rgba(59,130,246,.18);border-radius:5px;font-size:9px;font-weight:600;color:#60a5fa;text-decoration:none;transition:all .2s">📄 Brochure →</a>`;
+    popup+=`</div>`;
+  }
+
+  // MI intelligence section — same for both
+  if(mi){
+    if(!isGenerated){
+      popup+=`<div style="margin-top:6px;display:flex;gap:3px;flex-wrap:wrap">`;
+      if(mi.bestFor)mi.bestFor.forEach(b=>{popup+=`<span class="intent-tag">${intentIcon(b)} ${intentLabel(b)}</span>`});
+      popup+=`</div>`;
+      popup+=`<div style="margin-top:4px;display:flex;gap:4px;flex-wrap:wrap">`;
+      if(mi.psf)popup+=`<span class="psf-tag">AED ${mi.psf}/sqft</span>`;
+      if(mi.yield)popup+=`<span class="yield-tag">▲${mi.yield} yield</span>`;
+      if(mi.roi)popup+=`<span class="roi-tag">📈${mi.roi}</span>`;
+      if(mi.pp)popup+=`<span class="pp-tag">Plan: ${mi.pp}</span>`;
+      popup+=`</div>`;
+    }
+    // Comparison card — for both generated and seed
+    const match=getMatch(parentName);
+    if(match){
+      const t=match.project;
+      const tmi=match.mi;
+      popup+=`<div style="margin-top:8px;border:1px solid rgba(139,92,246,.12);border-radius:6px;overflow:hidden;background:rgba(139,92,246,.02)">`;
+      popup+=`<div style="padding:4px 8px;background:rgba(139,92,246,.06);font-size:8px;font-family:'Space Mono',monospace;color:var(--t3);text-transform:uppercase;letter-spacing:.5px">⚖️ vs <b style="color:#a78bfa;text-transform:none;font-size:10px">${t.n}</b></div>`;
+      popup+=`<div style="padding:5px 8px;font-size:9px;color:var(--t2);border-bottom:1px solid rgba(255,255,255,.03)">${match.why}</div>`;
+      popup+=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:0;font-size:9px">`;
+      const sn=parentName.length>16?parentName.substring(0,16)+'…':parentName;
+      const tn=t.n.length>16?t.n.substring(0,16)+'…':t.n;
+      popup+=`<div style="padding:2px 8px;background:rgba(0,229,160,.03);font-weight:700;color:var(--accent);border-bottom:1px solid rgba(255,255,255,.03);border-right:1px solid rgba(255,255,255,.03)">${sn}</div>`;
+      popup+=`<div style="padding:2px 8px;background:rgba(139,92,246,.03);font-weight:700;color:#a78bfa;border-bottom:1px solid rgba(255,255,255,.03)">${tn}</div>`;
+      [['PSF',mi?.psf,tmi?.psf],['Yield',mi?.yield,tmi?.yield],['ROI',mi?.roi,tmi?.roi],['Handover',p.e||'—',t.e||'—'],['Plan',mi?.pp,tmi?.pp]].forEach(([k,v1,v2])=>{
+        popup+=`<div style="padding:2px 8px;border-right:1px solid rgba(255,255,255,.03);border-bottom:1px solid rgba(255,255,255,.03)"><span style="color:var(--t3)">${k}</span> <span style="font-family:'Space Mono',monospace;color:var(--accent);font-size:8px">${v1||'—'}</span></div>`;
+        popup+=`<div style="padding:2px 8px;border-bottom:1px solid rgba(255,255,255,.03)"><span style="color:var(--t3)">${k}</span> <span style="font-family:'Space Mono',monospace;color:#a78bfa;font-size:8px">${v2||'—'}</span></div>`;
+      });
+      popup+=`</div>`;
+      popup+=`<div style="padding:5px 8px;font-size:9px;color:var(--t2);line-height:1.3;border-top:1px solid rgba(0,229,160,.08);background:rgba(0,229,160,.02)"><b style="color:var(--accent)">Verdict:</b> ${match.edge}</div>`;
+      popup+=`</div>`;
+    }
+  }
+
+  const marker=L.marker([p.lat,p.lng],{icon}).bindPopup(popup,{maxWidth:320,minWidth:240,maxHeight:500});
+  if(!markerLayers[p.c])markerLayers[p.c]=L.markerClusterGroup(clusterOptions);
+  markerLayers[p.c].addLayer(marker);
+  allMarkers.push({marker,data:p});
+});
+
+Object.values(markerLayers).forEach(l=>l.addTo(map));
+document.getElementById('listingCount').textContent=P.length;
+updateCounter(P.length);
+console.log(`Xplora: ${P.length} listings loaded (${generatedListings.length} generated from ${P.length-generatedListings.length} seed projects)`);
+
+function updateCounter(n){document.getElementById('counter').innerHTML=`Showing <b>${n}</b> of <b>${P.length}</b> listings`}
+
+// ══════════════════════════════════════════════
+// HEATMAP
+// ══════════════════════════════════════════════
+const heatLayer=L.heatLayer(heatData,{radius:35,blur:25,maxZoom:14,max:1,gradient:{0:'#0a0e17',.2:'#1a1a4e',.4:'#16216e',.6:'#4a3aaa',.8:'#e94560',1:'#ff6b6b'}});
+let heatmapActive=false;
+
+// ══════════════════════════════════════════════
+// CATEGORY FILTERS
+// ══════════════════════════════════════════════
+let activeCat='all';
+
+document.querySelectorAll('#catControls .pill').forEach(pill=>{
+  pill.addEventListener('click',()=>{
+    const f=pill.dataset.filter;
+    if(f==='heatmap'){pill.classList.toggle('active');heatmapActive=!heatmapActive;heatmapActive?heatLayer.addTo(map):map.removeLayer(heatLayer);return}
+    // Toggle behavior: click active pill to deselect back to All
+    if(pill.classList.contains('active') && f!=='all'){
+      document.querySelectorAll('#catControls .pill:not([data-filter="heatmap"])').forEach(p=>p.classList.remove('active'));
+      document.querySelector('#catControls .pill[data-filter="all"]').classList.add('active');
+      activeCat='all';
+    } else {
+      document.querySelectorAll('#catControls .pill:not([data-filter="heatmap"])').forEach(p=>p.classList.remove('active'));
+      pill.classList.add('active');
+      activeCat=f;
+    }
+    applyFilters();
+  });
+});
+
+// Legend toggle
+document.getElementById('legend').addEventListener('click',function(e){
+  if(e.target.closest('h4')){
+    const body=document.getElementById('legendBody');
+    const toggle=document.getElementById('legendToggle');
+    const isOpen=body.style.display!=='none';
+    body.style.display=isOpen?'none':'block';
+    toggle.textContent=isOpen?'▸':'▾';
+  }
+});
+
+function applyFilters(){
+  let shown=0;
+  // With cluster groups, we toggle entire category layers on/off
+  Object.entries(markerLayers).forEach(([cat,layer])=>{
+    const catOk=activeCat==='all'||cat===activeCat;
+    if(catOk){
+      if(!map.hasLayer(layer))map.addLayer(layer);
+    }else{
+      if(map.hasLayer(layer))map.removeLayer(layer);
+    }
+  });
+  // Count visible markers (for search, we need per-marker filtering)
+  if(currentSearch){
+    // For search, we need to rebuild clusters with only matching markers
+    Object.entries(markerLayers).forEach(([cat,layer])=>{
+      const catOk=activeCat==='all'||cat===activeCat;
+      if(!catOk)return;
+      layer.clearLayers();
+    });
+    allMarkers.forEach(({marker,data})=>{
+      const catOk=activeCat==='all'||data.c===activeCat;
+      const searchOk=[data.n,data.d,data.desc||'',data.t||'',data.p||''].join(' ').toLowerCase().includes(currentSearch);
+      if(catOk&&searchOk){
+        markerLayers[data.c]?.addLayer(marker);
+        shown++;
+      }
+    });
+  }else{
+    allMarkers.forEach(({data})=>{
+      const catOk=activeCat==='all'||data.c===activeCat;
+      if(catOk)shown++;
+    });
+    // Ensure all markers are in their cluster groups
+    allMarkers.forEach(({marker,data})=>{
+      if(!markerLayers[data.c]?.hasLayer(marker)){
+        markerLayers[data.c]?.addLayer(marker);
+      }
+    });
+  }
+  updateCounter(shown);
+}
+
+let currentSearch='';
+function filterSearch(val){
+  currentSearch=val.toLowerCase().trim();
+  applyFilters();
+}
+
+// ══════════════════════════════════════════════
+// AI CHAT — powered by actual dataset
+// ══════════════════════════════════════════════
+let chatOpen=false;
+function toggleChat(){chatOpen=!chatOpen;document.getElementById('chatPanel').classList.toggle('open',chatOpen);if(chatOpen){document.getElementById('chatInput').focus();}}
+// Check limit on page load
+function askSuggestion(el){document.getElementById('chatInput').value=el.textContent;sendMessage()}
+
+// Build system prompt from live data at init (once)
+function buildSystemPrompt(){
+  // Serialize seed projects (not generated units) with MI data
+  const seedProjects=P.filter(p=>!p._parent);
+  let projectData='';
+  seedProjects.forEach(p=>{
+    const mi=MI[p.n]||{};
+    const match=getMatch(p.n);
+    let line=`${p.n}|${p.d}|${p.c}|${p.p}|${p.e||'—'}|${p.s}`;
+    if(mi.psf)line+=`|PSF:${mi.psf}`;
+    if(mi.yield)line+=`|Yield:${mi.yield}`;
+    if(mi.roi)line+=`|ROI:${mi.roi}`;
+    if(mi.pp)line+=`|Plan:${mi.pp}`;
+    if(mi.bestFor)line+=`|For:${mi.bestFor.join(',')}`;
+    if(mi.vs)line+=`|vs:${mi.vs}`;
+    if(mi.edge)line+=`|Edge:${mi.edge}`;
+    projectData+=line+'\n';
+  });
+
+  // Branded projects list
+  const branded=seedProjects.filter(p=>p.c==='branded').map(p=>p.n).join(', ');
+
+  return `You are Xplora AI, a Dubai real estate decision engine. You have EXACT data for ${seedProjects.length} projects and ${P.length} total listings on the map.
+
+MARKET OVERVIEW (2025):
+- Total: 270K+ transactions worth AED 917B (+20% YoY)
+- Residential: 215,700 sales, +18.7% volume, +30.9% value
+- Off-plan: ~72% of transactions (149,230 deals, AED 448.1B)
+- Units delivered: 42,784 (+45%), launched: 177,624 (+6.1%)
+- Primary avg: AED 1,700/sqft, Secondary: AED 1,500/sqft
+- 726 projects under construction, ~120K units delivering 2026
+- Investors: 193,100 (+24%), 86% cash buyers
+- Women invested AED 154B across 76,700 deals
+
+TOP AREAS BY VOLUME: JVC (17,915 deals), Al Barsha South/Arjan (10,469 H1), Business Bay, Wadi Al Safa 5, Dubai Airport City, Dubai South
+TOP AREAS BY VALUE: Business Bay, Dubai Marina, Palm Jumeirah, Downtown/Burj Khalifa, MBR Gardens (AED 14.5B)
+
+BRANDED RESIDENCES: ${branded}
+
+COMPLETE PROJECT DATABASE (Format: Name|Developer|Category|Price|Handover|Status|PSF|Yield|ROI|PaymentPlan|BestFor|ComparedTo|Verdict):
+${projectData}
+
+INSTRUCTIONS:
+- You are a decision engine, not a search engine. Help users DECIDE between options.
+- When asked to compare, use the exact PSF, yield, ROI, and payment plan data above.
+- When asked "what's best for [goal]", filter by the bestFor tags (capital-appreciation, rental-income, family-home, growing-area, branded-prestige, flip, first-home, holiday-home).
+- When asked about a specific project, give ALL its data: price, PSF, yield, ROI, payment plan, handover, status, who it competes with, and the verdict.
+- Use AED figures. Be concise but data-rich. Max 200 words.
+- If comparing two projects, structure as: Project A vs Project B with a clear recommendation based on the user's stated or implied goal.
+- You can also answer general Dubai market questions using the market overview data.
+- When you don't have exact data for something, say so clearly rather than guessing.`;
+}
+
+const SYSTEM_PROMPT=buildSystemPrompt();
+console.log(`Xplora AI: System prompt built with ${P.filter(p=>!p._parent).length} projects, ${Object.keys(MI).length} MI entries`);
+
+// ── RATE LIMITING ──
+const AI_MSG_LIMIT=5;
+const LIMIT_KEY="xplora_ai_usage";
+function getUsage(){try{const d=JSON.parse(localStorage.getItem(LIMIT_KEY)||"{}");const today=new Date().toISOString().slice(0,10);if(d.date!==today)return{date:today,count:0};return d;}catch(e){return{date:new Date().toISOString().slice(0,10),count:0};}}
+function saveUsage(count){try{localStorage.setItem(LIMIT_KEY,JSON.stringify({date:new Date().toISOString().slice(0,10),count}));}catch(e){}}
+let aiMsgCount=getUsage().count;
+let aiLimitReached=aiMsgCount>=AI_MSG_LIMIT;
+
+function checkAILimit(){
+  if(aiMsgCount>=AI_MSG_LIMIT&&!aiLimitReached){
+    aiLimitReached=true;
+    const input=document.getElementById('chatInput');
+    const sendBtn=document.querySelector('.chat-send');
+    input.disabled=true;
+    input.placeholder="Daily AI limit reached, explore the map, more coming soon";
+    input.style.opacity='0.4';
+    sendBtn.disabled=true;
+    sendBtn.style.opacity='0.3';
+    sendBtn.style.cursor='default';
+    const md=document.getElementById('chatMessages');
+    md.innerHTML+=`<div class="msg ai" style="border-color:rgba(234,179,8,.2);background:rgba(234,179,8,.04)"><div class="label" style="color:#eab308">LIMIT</div>You've used your <b style="color:var(--accent)">${AI_MSG_LIMIT} AI queries</b> for today.<br><br>We're in <b style="color:#a78bfa">early beta</b> — full conversational AI with unlimited queries, personalized recommendations, and a lot more is on the way.<br><br>You can still explore everything on the map — <b style="color:var(--t1)">search bar</b>, <b style="color:var(--t1)">category filters</b>, and <b style="color:var(--t1)">click any marker</b> for full project data, yields, comparisons, and links.<br><br><span style="color:var(--accent);font-size:10px">Stay tuned — this is just the beginning.</span></div>`;
+    scrollChat();
+  }
+  return aiLimitReached;
+}
+
+function updateMsgCounter(){
+  const remaining=AI_MSG_LIMIT-aiMsgCount;
+  let counterEl=document.getElementById('aiMsgCounter');
+  if(!counterEl){
+    counterEl=document.createElement('div');
+    counterEl.id='aiMsgCounter';
+    counterEl.style.cssText='padding:0 12px 6px;font-size:9px;font-family:Space Mono,monospace;color:var(--t3);text-align:right';
+    const inputArea=document.querySelector('.chat-input-area');
+    inputArea.parentNode.insertBefore(counterEl,inputArea);
+  }
+  if(remaining<=2&&remaining>0){
+    counterEl.innerHTML=`<span style="color:#eab308">${remaining}</span> AI queries left`;
+  }else if(remaining>2){
+    counterEl.innerHTML=`${remaining} AI queries left`;
+  }else{
+    counterEl.innerHTML=`<span style="color:var(--red)">0</span> AI queries today · resets tomorrow`;
+  }
+}
+
+// Init: check if limit already reached from previous visit today
+if(aiLimitReached){
+  setTimeout(()=>{
+    const input=document.getElementById("chatInput");
+    const sendBtn=document.querySelector(".chat-send");
+    if(input){input.disabled=true;input.placeholder="Daily AI limit reached, explore the map, more coming soon";input.style.opacity="0.4";}
+    if(sendBtn){sendBtn.disabled=true;sendBtn.style.opacity="0.3";sendBtn.style.cursor="default";}
+    updateMsgCounter();
+  },200);
+}
+
+async function sendMessage(){
+  const input=document.getElementById('chatInput');const text=input.value.trim();if(!text)return;
+  if(checkAILimit())return;
+  const md=document.getElementById('chatMessages');
+  md.innerHTML+=`<div class="msg user"><div class="label">You</div>${esc(text)}</div>`;
+  input.value='';scrollChat();
+  aiMsgCount++;saveUsage(aiMsgCount);
+  updateMsgCounter();
+  const tid='t-'+Date.now();
+  md.innerHTML+=`<div class="msg ai" id="${tid}"><div class="label">AI</div><div class="typing-indicator"><span></span><span></span><span></span></div></div>`;
+  scrollChat();
+  try{
+    const r=await fetch('/api/messages',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1000,
+        system:SYSTEM_PROMPT,
+        messages:[{role:'user',content:text}]})});
+    const data=await r.json();
+    const t=data.content?.map(b=>b.text||'').join('')||'Sorry, please try again.';
+    const el=document.getElementById(tid);
+    if(el)el.innerHTML=`<div class="label">AI</div>${fmt(t)}`;
+  }catch(e){
+    const el=document.getElementById(tid);
+    if(el)el.innerHTML=`<div class="label">AI</div>Connection issue. Key stats: 270K+ deals worth AED 917B in 2025. JVC leads volume (17,915), Business Bay leads value. Try again!`;
+  }
+  scrollChat();
+  checkAILimit();
+}
+
+function fmt(t){return t.replace(/\*\*(.*?)\*\*/g,'<strong style="color:var(--accent)">$1</strong>').replace(/\n/g,'<br>').replace(/(AED\s?[\d,.]+[BMK]?)/g,'<span style="font-family:Space Mono,monospace;color:var(--accent);font-size:11px">$1</span>')}
+function esc(s){const d=document.createElement('div');d.textContent=s;return d.innerHTML}
+function scrollChat(){const e=document.getElementById('chatMessages');setTimeout(()=>e.scrollTop=e.scrollHeight,50)}
+
+// ══════════════════════════════════════════════
+// FLOOR PLAN & BROCHURE VISION ANALYSIS
+// ══════════════════════════════════════════════
+let pendingFloorPlan=null; // {base64, mediaType, fileName, isPdf}
+let activeDocument=null;  // Persists across follow-up questions
+let documentHistory=[];   // Multi-turn conversation with the document
+
+function handleFloorPlanUpload(event){
+  const file=event.target.files[0];
+  if(!file)return;
+  const isPdf=file.type==='application/pdf'||file.name.toLowerCase().endsWith('.pdf');
+  const reader=new FileReader();
+  reader.onload=function(e){
+    const dataUrl=e.target.result;
+    const base64=dataUrl.split(',')[1];
+    const mediaType=isPdf?'application/pdf':file.type||'image/jpeg';
+    pendingFloorPlan={base64,mediaType,fileName:file.name,isPdf};
+    activeDocument={base64,mediaType,fileName:file.name,isPdf};
+    documentHistory=[]; // Reset conversation for new document
+
+    const md=document.getElementById('chatMessages');
+    // Different preview for PDF vs image
+    if(isPdf){
+      md.innerHTML+=`<div class="msg user">
+        <div class="label">You</div>
+        <div style="padding:12px;background:rgba(59,130,246,.06);border:1px solid rgba(59,130,246,.15);border-radius:8px;display:flex;align-items:center;gap:8px">
+          <svg viewBox="0 0 24 24" style="width:28px;height:28px;fill:#60a5fa;flex-shrink:0"><path d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zm-1 7V3.5L18.5 9H13zm-3 4h4v1.5h-4V13zm0 3h4v1.5h-4V16zm-2-6h1.5v6H8v-6z"/></svg>
+          <div>
+            <div style="font-weight:600;font-size:11px;color:var(--t1)">${esc(file.name)}</div>
+            <div style="font-size:9px;color:var(--t3)">${(file.size/1024).toFixed(0)} KB · PDF document ready for analysis</div>
+          </div>
+        </div>
+      </div>`;
+    }else{
+      md.innerHTML+=`<div class="msg user">
+        <div class="label">You</div>
+        <img src="${dataUrl}" style="width:100%;max-height:160px;object-fit:contain;border-radius:6px;margin-bottom:4px;background:#1a2235" alt="Floor plan">
+        <div style="font-size:10px;color:var(--t3)">📐 ${esc(file.name)}</div>
+      </div>`;
+    }
+    scrollChat();
+
+    document.getElementById('chatInput').value='';
+    document.getElementById('chatInput').placeholder=isPdf?'e.g. "Show me all 2BR floor plans with balcony from living room"':'e.g. "Does this have a balcony off the living room?"';
+    document.getElementById('chatInput').focus();
+
+    // Contextual suggestions based on file type
+    const pdfSuggestions=isPdf?`
+        <div class="suggestion-chip" onclick="askSuggestion(this)">List all unit types and sizes in this brochure</div>
+        <div class="suggestion-chip" onclick="askSuggestion(this)">Which units have balcony from living room?</div>
+        <div class="suggestion-chip" onclick="askSuggestion(this)">What are the payment plan details?</div>
+        <div class="suggestion-chip" onclick="askSuggestion(this)">Summarize amenities and facilities</div>
+        <div class="suggestion-chip" onclick="askSuggestion(this)">Best unit for a family with 2 kids?</div>
+    `:`
+        <div class="suggestion-chip" onclick="askSuggestion(this)">Describe the layout and flow</div>
+        <div class="suggestion-chip" onclick="askSuggestion(this)">Is the balcony accessible from living room?</div>
+        <div class="suggestion-chip" onclick="askSuggestion(this)">How many bathrooms and where?</div>
+        <div class="suggestion-chip" onclick="askSuggestion(this)">Is this good for a family with kids?</div>
+        <div class="suggestion-chip" onclick="askSuggestion(this)">Estimate the sqft breakdown by room</div>
+    `;
+
+    md.innerHTML+=`<div class="msg ai"><div class="label">AI · ${isPdf?'Document':'Vision'}</div>${isPdf?'Brochure/PDF loaded. I can extract floor plans, payment plans, unit types, amenities, and more. Ask as many follow-up questions as you like — I\'ll keep the document in context.':'Floor plan loaded. Ask as many questions as you like about this layout.'}
+      <div class="suggestions">${pdfSuggestions}</div>
+      <div style="margin-top:6px;padding:4px 8px;background:rgba(59,130,246,.06);border:1px solid rgba(59,130,246,.1);border-radius:4px;font-size:9px;color:var(--t3);display:flex;align-items:center;justify-content:space-between">
+        <span>📎 <b style="color:#60a5fa">${esc(file.name)}</b> active — all follow-ups reference this file</span>
+        <span onclick="clearDocument()" style="color:var(--red);cursor:pointer;font-weight:600;padding:2px 6px">✕ Clear</span>
+      </div>
+    </div>`;
+    scrollChat();
+  };
+  reader.readAsDataURL(file);
+  event.target.value='';
+}
+
+const visionSystemPrompt=`You are Xplora AI Floor Plan & Brochure Analyst for the Dubai real estate market.
+
+FOR FLOOR PLAN IMAGES:
+1. SPATIAL LAYOUT: Describe flow — entry → living → kitchen → bedrooms → bathrooms → balconies. Which rooms connect to which.
+2. ROOM IDENTIFICATION: Every room, purpose, relative size.
+3. BALCONY/OUTDOOR: All balconies/terraces, which rooms they're accessible from.
+4. LIVABILITY: Natural light, bedroom privacy, kitchen openness, storage, flow quality.
+5. BUYER FIT: Who this suits — single, couple, family with young kids, family with teens, entertainer, WFH.
+6. DUBAI CONTEXT: Unit type identification, typical pricing, common areas offering this layout.
+
+FOR PDF BROCHURES:
+1. Extract ALL floor plan types (Studio, 1BR, 2BR, 3BR, etc.) with sizes in sqft.
+2. Identify payment plan structure if shown.
+3. List amenities and facilities.
+4. Note handover dates, developer details, project location.
+5. For each floor plan type, describe the spatial layout including balcony positions.
+6. Answer the user's specific question using data from the document.
+
+Be specific: "the balcony is accessible from the living room via sliding doors" not "there is a balcony."
+Answer the user's question FIRST, then add observations. Max 300 words.`;
+
+async function sendVisionMessage(text,fp){
+  const md=document.getElementById('chatMessages');
+  const tid='t-'+Date.now();
+  const label=fp.isPdf?'Document 📄':'Vision 📐';
+  md.innerHTML+=`<div class="msg ai" id="${tid}"><div class="label">AI · ${label}</div><div class="typing-indicator"><span></span><span></span><span></span></div></div>`;
+  scrollChat();
+
+  try{
+    const contentBlock=fp.isPdf
+      ?{type:'document',source:{type:'base64',media_type:'application/pdf',data:fp.base64}}
+      :{type:'image',source:{type:'base64',media_type:fp.mediaType,data:fp.base64}};
+
+    // Build multi-turn messages — document always in first message
+    let messages=[];
+    if(documentHistory.length===0){
+      messages.push({role:'user',content:[contentBlock,{type:'text',text}]});
+    }else{
+      // First turn has the document
+      messages.push({role:'user',content:[contentBlock,{type:'text',text:documentHistory[0].userText}]});
+      messages.push({role:'assistant',content:[{type:'text',text:documentHistory[0].aiText}]});
+      // Subsequent turns are text-only follow-ups
+      for(let i=1;i<documentHistory.length;i++){
+        messages.push({role:'user',content:documentHistory[i].userText});
+        messages.push({role:'assistant',content:[{type:'text',text:documentHistory[i].aiText}]});
+      }
+      // Current question
+      messages.push({role:'user',content:text});
+    }
+
+    const r=await fetch('/api/messages',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1500,
+        system:visionSystemPrompt,
+        messages})});
+    const data=await r.json();
+    const t=data.content?.map(b=>b.text||'').join('')||'Could not analyze. Please try again.';
+
+    // Store in history for follow-ups
+    documentHistory.push({userText:text,aiText:t});
+
+    const el=document.getElementById(tid);
+    if(el)el.innerHTML=`<div class="label">AI · ${label}</div>${fmt(t)}`;
+  }catch(e){
+    console.error('Vision error:',e);
+    const el=document.getElementById(tid);
+    if(el)el.innerHTML=`<div class="label">AI</div>Error analyzing file. Try a smaller file or screenshot of the relevant page.`;
+  }
+  scrollChat();
+}
+
+function clearDocument(){
+  activeDocument=null;
+  pendingFloorPlan=null;
+  documentHistory=[];
+  document.getElementById('chatInput').placeholder='Ask anything, or upload a floor plan...';
+  const md=document.getElementById('chatMessages');
+  md.innerHTML+=`<div class="msg ai"><div class="label">AI</div>Document cleared. Back to market intelligence mode. Upload another file or ask about any project.</div>`;
+  scrollChat();
+}
+
+// Override sendMessage — route to vision when document is active
+const _originalSendMessage=sendMessage;
+sendMessage=async function(){
+  const input=document.getElementById('chatInput');
+  const text=input.value.trim();
+  if(!text)return;
+  if(checkAILimit())return;
+
+  // If there's an active document (pending or persistent), use vision mode
+  const doc=pendingFloorPlan||activeDocument;
+  if(doc){
+    aiMsgCount++;saveUsage(aiMsgCount);updateMsgCounter();
+    const md=document.getElementById('chatMessages');
+    md.innerHTML+=`<div class="msg user"><div class="label">You</div>${esc(text)}</div>`;
+    input.value='';
+    scrollChat();
+    if(pendingFloorPlan)pendingFloorPlan=null;
+    await sendVisionMessage(text,doc);
+    checkAILimit();
+  }else{
+    await _originalSendMessage();
+  }
+};
+</script>         
+<script src="mapbridge.js"></script>   ← ADD ONLY THIS LINE
+</body>
+</html>
